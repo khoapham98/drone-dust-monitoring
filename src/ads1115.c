@@ -27,7 +27,7 @@ void ads1115_reset(int fd)
 
 unsigned int ads1115_init(char* fpath, unsigned int slave_addr)
 {
-	unsigned int fd = open(fpath, O_RDWR);
+	int fd = open(fpath, O_RDWR);
 	if (fd < 0)
 	{
 		perror("open");
