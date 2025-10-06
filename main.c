@@ -33,6 +33,7 @@ void* thread1_read_dust_sensor(void* arg)
 
 	return arg;
 }
+
 void* thread2_send_to_esp(void* arg)
 {	
 	while (1)
@@ -42,7 +43,9 @@ void* thread2_send_to_esp(void* arg)
 		while (queue.data_rcv == 0)
 			pthread_cond_wait(&queue.cond, &queue.lock);
 		
-		pms7003_get_PM(queue.data);
+		char json_data[100] = {0};
+		pms7003_data_to_json(json_data, sizeof(json_data), queue.data, 10.1235, 123.345);
+		printf("%s\n", json_data);
 		queue.data_rcv = 0;
 		pthread_mutex_unlock(&queue.lock);
 	}
