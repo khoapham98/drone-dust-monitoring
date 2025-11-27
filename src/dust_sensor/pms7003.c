@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "../inc/pms7003.h"
 #include <string.h>
+#include "pms7003.h"
 
 void pms7003_data_to_json(char* dest, size_t size, uint8_t* src, float lat, float lon)
 {

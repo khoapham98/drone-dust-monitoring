@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include "../inc/uart.h"
 
 int uart_init(char* UART_PATH)
 {	
