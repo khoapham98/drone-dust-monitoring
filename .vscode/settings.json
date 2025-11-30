@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "device_setup.h": "c"
+        "device_setup.h": "c",
+        "dust_sensor.h": "c"
     }
 }
