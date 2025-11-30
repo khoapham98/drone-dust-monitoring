@@ -1,7 +1,11 @@
+/**
+ * @file	uart.c
+ * @brief	uart driver source file
+ */
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include "../inc/uart.h"
+#include "uart.h"
 
 int uart_init(char* UART_PATH)
 {	

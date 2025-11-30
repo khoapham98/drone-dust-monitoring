@@ -1,27 +1,26 @@
 TARGET = build/bin/app
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinc
+CFLAGS = -Wall -Wextra -I. -Isrc -Isys -MMD -MP
+LDFLAGS = -pthread
 
-SRC_DIR = src
+SRC_DIRS = src sys
 OBJ_DIR = build/obj
 BIN_DIR = build/bin
 
-SRCS = main.c $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(notdir $(SRCS)))
+SRCS = $(shell find . -name '*.c')
+OBJS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(SRCS))
+DEPS = $(OBJS:.o=.d)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -pthread -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
+# rule compile .c -> .o
 $(OBJ_DIR)/%.o: %.c
-	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
@@ -30,4 +29,6 @@ clean:
 run:
 	./$(TARGET)
 
-.PHONY: all clean
+-include $(DEPS)
+
+.PHONY: all clean run
