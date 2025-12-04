@@ -19,8 +19,6 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 	int firstIndex = findSubStr(buf, "$GNRMC");
 	if (firstIndex < 0) {
 		LOG_ERR("Can't find RMC message from GPS");
-		*latitude  = -1;
-		*longitude = -1;
 		return;
 	}
 
@@ -34,6 +32,7 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 	int lon_degree = 0;
 	double lat_minute = 0;
 	double lon_minute = 0;
+	bool dataErr = false;
 
 	for (size_t i = 0; i < newLen; i++) {
 		if (new_buf[i] != ',') continue;
@@ -44,6 +43,7 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 		if (field == LATITUDE_FIELD_NUM) {
 			if (new_buf[i + 1] == ',') {
 				LOG_ERR("Invalid latitude data");
+				dataErr = true;
 				continue;
 			}
 			
@@ -69,6 +69,7 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 		else if (field == LONGTITUDE_FIELD_NUM) {
 			if (new_buf[i + 1] == ',') {
 			    LOG_ERR("Invalid longitude data");
+				dataErr = true;
 				continue;
 			}
 
@@ -92,6 +93,12 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 			}
 		}
 	}
+
+	if (dataErr) {
+		LOG_ERR("GPS data error, keeping previous values");
+		return;
+	}
+
 	*latitude = lat_degree + (lat_minute / 60);
 	*longitude = lon_degree + (lon_minute / 60);
 }
