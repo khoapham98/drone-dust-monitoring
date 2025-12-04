@@ -8,13 +8,14 @@
 #include <unistd.h>
 #include <string.h>
 #include "sys/log.h"
-#include "../../sys/log.h"
 #include "src/dust_sensor/dust_sensor.h"
+#include "src/drivers/uart.h"
 
-void parseDustDataToJson(char* dest, uint8_t* src, size_t len)
+static int uart_fd = 0;
+
+void getPm2_5(uint8_t* buf, uint16_t* pm2_5)
 {
-	int pm2_5 = src[12] << 8 | src[13]; 
-	snprintf(dest, len, "\"sensor_value\":%d", pm2_5);
+	*pm2_5 = buf[12] << 8 | buf[13]; 
 }
 
 void printDustData(uint8_t* buf)
@@ -43,12 +44,21 @@ void checkDustData(uint8_t* buf)
 	printf("Frame length: %d bytes [%s]\n", frame_len, str[frame_len == 28]);
 }
 
-void readDustData(int fd, uint8_t* rx_buf, int len)
+void readDustData(uint8_t* buf, int len)
 {
 	if (len < DUST_DATA_FRAME) 
-		LOG_WRN("dust_sensor: Cannot receive data fully");
+		LOG_WRN("dust_sensor: May not receive data fully");
 
-	int ret = read(fd, rx_buf, len);
-	if (ret < 0)
-		perror("read");
+	readUART(uart_fd, buf, len);	
+}
+
+int dustSensor_init(char* uart_file_path)
+{
+	uart_fd = uart_init(uart_file_path);
+    if (uart_fd < 0) {
+        return -1;
+	}
+    
+	LOG_INF("Dust Sensor Initialization successful");
+	return 0;
 }

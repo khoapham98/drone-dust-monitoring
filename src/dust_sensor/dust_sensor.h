@@ -11,13 +11,20 @@
 #define DUST_DATA_FRAME     32
 
 /**
+ * @brief   get PM2.5 value 
+ * @param   buf is buffer address that contain dust sensor data
+ * @param   pm2_5 is variable address to store PM2.5 value
+ * @return  none
+ *  */
+void getPm2_5(uint8_t* buf, uint16_t* pm2_5);
+
+/**
  * @brief   read dust data 
- * @param   fd UART file descriptor
- * @param   rx_buf buffer address to store data
+ * @param   buf buffer address to store data
  * @param   len length of buffer - must be atlease 32 bytes 
  * @return  none
  *  */
-void readDustData(int fd, uint8_t* rx_buf, int len);
+void readDustData(uint8_t* buf, int len);
 
 /**
  * @brief   check dust data 
@@ -34,11 +41,10 @@ void checkDustData(uint8_t* buf);
 void printDustData(uint8_t* buf);
 
 /**
- * @brief   parse dust data to JSON
- * @param   dest JSON buffer address
- * @param   src dust data buffer address
- * @return  none
+ * @brief   Initialize dust sensor 
+ * @param   uart_file_path is file path of UART
+ * @return  0 if success; -1 otherwise
  */
-void parseDustDataToJson(char* dest, uint8_t* src, size_t len);
+int dustSensor_init(char* uart_file_path);
 
 #endif

@@ -2,10 +2,19 @@
  * @file	uart.c
  * @brief	uart driver source file
  */
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <stdio.h>
 #include "uart.h"
+
+void readUART(int fd, uint8_t* buf, int len)
+{
+	int ret = read(fd, buf, len);
+	if (ret < 0)
+		perror("read");
+}
 
 int uart_init(char* UART_PATH)
 {	
@@ -13,6 +22,7 @@ int uart_init(char* UART_PATH)
 	if (uart_fd < 0)
 	{
 		perror("open");
+		close(uart_fd);
 		return -1;
 	}
 
