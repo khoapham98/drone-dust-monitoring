@@ -43,8 +43,9 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 
 		if (field == LATITUDE_FIELD_NUM) {
 			if (new_buf[i + 1] == ',') {
-				LOG_ERR("Latitude data is invalid");
-				break;
+				LOG_ERR("Invalid latitude data");
+				*latitude = -1;
+				continue;
 			}
 			
 			/* get latitude data */
@@ -68,8 +69,9 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude)
 		} 
 		else if (field == LONGTITUDE_FIELD_NUM) {
 			if (new_buf[i + 1] == ',') {
-			    LOG_ERR("Longtitude data is invalid");
-				break;
+			    LOG_ERR("Invalid longitude data");
+				*longitude = -1;
+				continue;
 			}
 
 			/* get longtitude data */
