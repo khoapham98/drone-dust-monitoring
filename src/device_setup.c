@@ -64,15 +64,18 @@ void* send2WebTask(void* arg)
 {
 	while (1) {
         sem_wait(&gpsDataReadySem);        
+        double lat = latitude;
+        double lon = longitude;
         sem_post(&gpsDataDoneSem);
 
         sem_wait(&dustDataReadySem);        
+        uint16_t pm25 = pm2_5;
         sem_post(&dustDataDoneSem);
 
-        parseAllDataToJson(&json_ring_buf, latitude, longitude, pm2_5);
+        parseAllDataToJson(&json_ring_buf, lat, lon, pm25);
         char web_buf[256] = {0};
         getJsonData(&json_ring_buf, web_buf);
-        printf("%s\n", web_buf);
+        LOG_INF("%s", web_buf);
 	}
 
 	return arg;
@@ -89,7 +92,7 @@ static int setupDustSensor(void)
 
     err = pthread_create(&thread[0], NULL, updateDustDataTask, NULL);
     if (err != 0) 
-        LOG_ERR("pthread_create: %d\n", err);
+        LOG_ERR("pthread_create: %d", err);
 
     return err;
 }
@@ -105,7 +108,7 @@ static int setupGPS(void)
 
     err = pthread_create(&thread[1], NULL, updateGPSTask, NULL);
     if (err != 0) 
-        LOG_ERR("pthread_create: %d\n", err);
+        LOG_ERR("pthread_create: %d", err);
 
     return err;
 }
@@ -114,7 +117,7 @@ static int setup4G(void)
 {
     int err = pthread_create(&thread[2], NULL, send2WebTask, NULL);
     if (err != 0) 
-        LOG_ERR("pthread_create: %d\n", err);
+        LOG_ERR("pthread_create: %d", err);
 
     return err;
 }
@@ -127,15 +130,15 @@ int deviceSetup(void)
 
     err = setupDustSensor();
     if (err != 0)
-        LOG_ERR("Failed to setup dust sensor\n");
+        LOG_ERR("Failed to setup dust sensor");
 
     err = setupGPS();
     if (err != 0)
-        LOG_ERR("Failed to setup GPS\n");
+        LOG_ERR("Failed to setup GPS");
 
     err = setup4G();
     if (err != 0)
-        LOG_ERR("Failed to setup 4G module\n");
+        LOG_ERR("Failed to setup 4G module");
 
     return err;
 }
