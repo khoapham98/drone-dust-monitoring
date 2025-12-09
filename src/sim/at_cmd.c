@@ -3,6 +3,7 @@
  * @brief   Low-level AT command source file for UART communication
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
@@ -34,7 +35,7 @@ int at_send_wait(char* cmd, uint64_t timeout_ms)
     if (num < 0) 
         return -1;
 
-    LOG_INF("%s", resp);
+    LOG_INF("Send: %s%s", cmd, resp);
     return 0;    
 }
 
@@ -109,7 +110,7 @@ int at_read(char* buf, size_t max_len, uint64_t timeout_ms)
 
 int sim_init(char* uart_file_path)
 {
-	uart_fd = uart_init_sim(uart_file_path);
+    uart_fd = uart_init(uart_file_path, true);
     if (uart_fd < 0) {
         return -1;
 	}
