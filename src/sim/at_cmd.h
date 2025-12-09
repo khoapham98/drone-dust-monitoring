@@ -16,6 +16,11 @@
 #define AT_CMD_BASIC_CHECK          "AT\r\n"
 #define AT_CMD_ECHO_ON              "ATE1\r\n"
 #define AT_CMD_ECHO_OFF             "ATE0\r\n"
+#define AT_CMD_GET_FW_VERSION       "AT+GMR\r\n"
+#define AT_CMD_GET_MODEL            "AT+CGMM\r\n"
+#define AT_CMD_GET_MANUFACTURER     "AT+CGMI\r\n"
+#define AT_CMD_GET_IMEI             "AT+CGSN\r\n"
+#define AT_CMD_GET_FUN_MODE         "AT+CFUN?\r\n"
 
 /* SIM & SIGNAL */
 #define AT_CMD_READ_ICCID           "AT+CICCID\r\n"

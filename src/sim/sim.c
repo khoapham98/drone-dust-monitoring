@@ -108,9 +108,77 @@ int simGetIpAddr(void)
     return at_send_wait(AT_CMD_GET_IP_ADDR, 2000);
 }
 
+/* ===== SIM SELF TEST ===== */
+
+int simCheckFwVersion(void)
+{
+    return at_send_wait(AT_CMD_GET_FW_VERSION, 2000);
+}
+
+int simCheckModel(void)
+{
+    return at_send_wait(AT_CMD_GET_MODEL, 2000);
+}
+
+int simCheckManufacturer(void)
+{
+    return at_send_wait(AT_CMD_GET_MANUFACTURER, 2000);
+}
+
+int simCheckImei(void)
+{
+    return at_send_wait(AT_CMD_GET_IMEI, 2000);
+}
+
+int simCheckFunMode(void)
+{
+    return at_send_wait(AT_CMD_GET_FUN_MODE, 2000);
+}
+
+/* ===== WRAPPER APIs ===== */
+
+void simSelfTestBasic(void)
+{
+    int err = 0;
+    LOG_INF("Sim self-test start");
+
+    err = simCheckFwVersion();
+    if (err < 0) {
+        LOG_ERR("Check Firmware version failed");
+        return;
+    }
+
+    err = simCheckModel();
+    if (err < 0) {
+        LOG_ERR("Check model failed");
+        return;
+    }
+
+    err = simCheckManufacturer();
+    if (err < 0) {
+        LOG_ERR("Check manufacturer failed");
+        return;
+    }
+
+    err = simCheckImei();
+    if (err < 0) {
+        LOG_ERR("Check IMEI failed");
+        return;
+    }
+
+    err = simCheckFunMode();
+    if (err < 0) {
+        LOG_ERR("Check CFun mode failed");
+        return;
+    }
+
+    LOG_INF("Sim self-test done");
+}
+
 void simInitialCheck(void)
 {
     int err = 0;
+    LOG_INF("Start sim check");
 
     err = simEnterCmdMode();
     if (err < 0) {

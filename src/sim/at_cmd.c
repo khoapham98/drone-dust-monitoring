@@ -35,7 +35,7 @@ int at_send_wait(char* cmd, uint64_t timeout_ms)
     if (num < 0) 
         return -1;
 
-    LOG_INF("Send: %s%s", cmd, resp);
+    LOG_INF("Send: %sResponse:%s", cmd, resp);
     return 0;    
 }
 

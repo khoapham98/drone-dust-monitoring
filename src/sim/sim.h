@@ -138,6 +138,39 @@ int simDeactivatePdp(void);
  */
 int simGetIpAddr(void);
 
+/******************************************************************************/
+/* Self Test */
+/******************************************************************************/
+
+/**
+ * @brief  Query firmware version using AT+GMR.
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckFwVersion(void);
+
+/**
+ * @brief  Query the hardware model using AT+CGMM.
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckModel(void);
+
+/**
+ * @brief  Query the manufacturer information using AT+CGMI.
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckManufacturer(void);
+
+/**
+ * @brief  Query the IMEI using AT+CGSN.
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckImei(void);
+
+/**
+ * @brief  Query the current functionality mode using AT+CFUN?.
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckFunMode(void);
 
 /******************************************************************************/
 /* Precheck */
@@ -156,5 +189,11 @@ int simGetIpAddr(void);
  * @return none
  */
 void simInitialCheck(void);
+
+/**
+ * @brief  Run all basic diagnostic AT commands.
+ * @return none
+ */
+void simSelfTestBasic(void);
 
 #endif
