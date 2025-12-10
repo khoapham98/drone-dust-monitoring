@@ -3,10 +3,54 @@
  * @brief   High-level SIM API source file built on top of the AT command driver
  */
 #include <stdio.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <string.h>
 #include "sys/log.h"
 #include "sim.h"
 #include "at_cmd.h"
 #include "src/drivers/uart.h"
+
+typedef int(*callback_t)(void);
+
+static bool sim_resp_ok(char* buf)
+{
+    if (buf == NULL) return false;
+
+    if (strstr(buf, "OK") != NULL)
+        return true;
+    else
+        return false;
+}
+
+static int retry(callback_t cb, size_t retry_cnt)
+{
+    if (cb == NULL) return -1;
+
+    size_t cnt = 0;
+    char resp[RESP_FRAME] = {0};
+
+    at_attach_resp_buffer(resp, sizeof(resp));
+
+    while (cnt <= retry_cnt) {
+        memset(resp, 0, sizeof(resp));
+
+        cb();
+
+        if (sim_resp_ok(resp) == true) 
+            break;
+        
+        cnt++;
+        if (cnt <= retry_cnt) {
+            sleep(1);
+            LOG_WRN("retry #%d", cnt);
+        }
+    }
+
+    at_attach_resp_buffer(NULL, 0);
+    if (cnt > retry_cnt) return -1;
+    return cnt; 
+}
 
 /* ===== SWITCH MODE ===== */
 

@@ -141,6 +141,12 @@ int simDeactivatePdp(void);
  */
 int simGetIpAddr(void);
 
+/**
+ * @brief Check PDP context (AT+CGDCONT).
+ * @return 0 on success, -1 on failure.
+ */
+int simCheckPdp(void); 
+
 /******************************************************************************/
 /* Self Test */
 /******************************************************************************/
