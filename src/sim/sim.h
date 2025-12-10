@@ -5,6 +5,10 @@
 #ifndef _SIM_H_
 #define _SIM_H_
 
+#define     VIETTEL         1
+#define     MOBIFONE        0
+#define     VINAPHONE       0
+
 /******************************************************************************/
 /* Mode switch */
 /******************************************************************************/
@@ -103,10 +107,9 @@ int simCheckOperator(void);
 
 /**
  * @brief Set PDP context APN (AT+CGDCONT).
- * @param apn APN string.
  * @return 0 on success, -1 on failure.
  */
-int simSetPdpContext(const char *apn);
+int simSetPdpContext(void);
 
 /**
  * @brief Attach to GPRS service (AT+CGATT=1).

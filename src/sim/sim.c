@@ -76,8 +76,15 @@ int simCheckOperator(void)
 
 /* ===== PDP CONTEXT / PACKET DATA ===== */
 
-int simSetPdpContext(const char* apn)
+int simSetPdpContext(void)
 {
+#if VIETTEL
+    char* apn = "v-internet";
+#elif MOBIFONE
+    char* apn = "m-wap";
+#elif VINAPHONE
+    char* apn = "m3-world";
+#endif
     char cmd[128] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_SET_PDP_CONTEXT, apn);
     return at_send_wait(cmd, 2000);
@@ -225,6 +232,30 @@ void simInitialCheck(void)
     err = simCheckOperator();
     if (err < 0) {
         LOG_ERR("Read operator (COPS) failed");
+        return;
+    }
+    
+    err = simAttachGprs();
+    if (err < 0) {
+        LOG_ERR("Attach GPRS failed");
+        return;
+    }
+
+    err = simSetPdpContext();
+    if (err < 0) {
+        LOG_ERR("Set PDP context failed");
+        return;
+    }
+
+    err = simActivatePdp();
+    if (err < 0) {
+        LOG_ERR("Activate PDP failed");
+        return;
+    }
+
+    err = simGetIpAddr();
+    if (err < 0) {
+        LOG_ERR("Get IP address failed");
         return;
     }
 
