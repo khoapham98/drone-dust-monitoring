@@ -193,10 +193,29 @@ int simCheckFunMode(void)
 
 /* ===== WRAPPER APIs ===== */
 
-void simSelfTestBasic(void)
+void simModuleInitCheck(void)
 {
     int err = 0;
-    LOG_INF("Sim self-test start");
+
+    LOG_INF("Module Check start");
+
+    err = simEnterCmdMode();
+    if (err < 0) {
+        LOG_ERR("Enter CMD mode failed");
+        return;
+    }
+
+    err = simCheckAlive();
+    if (err < 0) {
+        LOG_ERR("AT check failed");
+        return;
+    }
+
+    err = simEchoOff();
+    if (err < 0) {
+        LOG_ERR("Disable echo failed");
+        return;
+    }
 
     err = simCheckFwVersion();
     if (err < 0) {
@@ -227,34 +246,17 @@ void simSelfTestBasic(void)
         LOG_ERR("Check CFun mode failed");
         return;
     }
-
-    LOG_INF("Sim self-test done");
+    
+    LOG_INF("Module check done");
 }
 
-void simInitialCheck(void)
+void simSetup4G(void)
 {
     int err = 0;
-    LOG_INF("Start sim check");
 
-    err = simEnterCmdMode();
-    if (err < 0) {
-        LOG_ERR("Enter CMD mode failed");
-        return;
-    }
+    LOG_INF("setup 4G start");
 
-    err = simCheckAlive();
-    if (err < 0) {
-        LOG_ERR("AT check failed");
-        return;
-    }
-
-    err = simEchoOff();
-    if (err < 0) {
-        LOG_ERR("Disable echo failed");
-        return;
-    }
-
-    err = simCheckReady();
+    err = retry(simCheckReady, 5);
     if (err < 0) {
         LOG_ERR("SIM not ready (CPIN?)");
         return;
@@ -266,13 +268,13 @@ void simInitialCheck(void)
         return;
     }
 
-    err = simCheckSignal();
+    err = retry(simCheckSignal, 5);
     if (err < 0) {
         LOG_ERR("Read signal (CSQ) failed");
         return;
     }
 
-    err = simCheckRegEps();
+    err = retry(simCheckRegEps, 8);
     if (err < 0) {
         LOG_ERR("Network registration (CEREG) failed");
         return;
@@ -284,7 +286,7 @@ void simInitialCheck(void)
         return;
     }
     
-    err = simAttachGprs();
+    err = retry(simAttachGprs, 5);
     if (err < 0) {
         LOG_ERR("Attach GPRS failed");
         return;
@@ -296,17 +298,23 @@ void simInitialCheck(void)
         return;
     }
 
-    err = simActivatePdp();
+    err = simCheckPdp();
+    if (err < 0) {
+        LOG_ERR("Check PDP context failed");
+        return;
+    }
+
+    err = retry(simActivatePdp, 5);
     if (err < 0) {
         LOG_ERR("Activate PDP failed");
         return;
     }
 
-    err = simGetIpAddr();
+    err = retry(simGetIpAddr, 5);
     if (err < 0) {
         LOG_ERR("Get IP address failed");
         return;
     }
 
-    LOG_INF("Sim initial check done");
+    LOG_INF("Setup 4G done");
 }

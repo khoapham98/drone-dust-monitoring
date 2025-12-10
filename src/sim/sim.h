@@ -186,23 +186,15 @@ int simCheckFunMode(void);
 /******************************************************************************/
 
 /**
- * @brief Perform full module precheck:
- *        - Command mode
- *        - AT alive
- *        - Disable echo
- *        - SIM ready
- *        - ICCID
- *        - Signal
- *        - Registration
- *        - Operator
+ * @brief  Module self-test
  * @return none
  */
-void simInitialCheck(void);
+void simModuleInitCheck(void);
 
 /**
- * @brief  Run all basic diagnostic AT commands.
+ * @brief  Setup 4G
  * @return none
  */
-void simSelfTestBasic(void);
+void simSetup4G(void);
 
 #endif
