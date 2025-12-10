@@ -30,6 +30,7 @@
 #define AT_CMD_CHECK_REG_GPRS       "AT+CGREG?\r\n"
 #define AT_CMD_CHECK_REG_EPS        "AT+CEREG?\r\n"
 #define AT_CMD_CHECK_OPERATOR       "AT+COPS?\r\n"
+#define AT_CMD_CHECK_PDP_CONTEXT    "AT+CGDCONT?\r\n"
 
 /* PDP CONTEXT / PACKET DATA */
 #define AT_CMD_SET_PDP_CONTEXT      "AT+CGDCONT=1,\"IP\",\"%s\"\r\n"   // APN

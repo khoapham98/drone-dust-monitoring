@@ -115,7 +115,12 @@ int simGetIpAddr(void)
     return at_send_wait(AT_CMD_GET_IP_ADDR, 2000);
 }
 
-/* ===== SIM SELF TEST ===== */
+int simCheckPdp(void)
+{
+    return at_send_wait(AT_CMD_CHECK_PDP_CONTEXT, 2000);
+}
+
+/* ===== MODULE SIM SELF-TEST ===== */
 
 int simCheckFwVersion(void)
 {
