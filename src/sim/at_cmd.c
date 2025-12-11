@@ -48,7 +48,7 @@ int at_send_wait(char* cmd, uint64_t timeout_ms)
         strncpy(resp_ptr, resp, len);
     }
 
-    LOG_INF("Send: %sResponse:%s", cmd, resp);
+    LOG_INF("Send: %s\nResponse:%s", cmd, resp);
     return 0;    
 }
 
@@ -77,11 +77,14 @@ int at_send(char* cmd, size_t len)
 
 int at_read(char* buf, size_t max_len, uint64_t timeout_ms)
 {
-    if (uart_fd < 0)
+    if (uart_fd < 0 || buf == NULL || max_len == 0)
         return -1;
 
     size_t idx = 0;
     uint64_t start = now_ms();
+    uint64_t last_rx = now_ms();   
+
+    const uint64_t QUIET_MS = 80;  
 
     while (1)
     {
@@ -93,28 +96,25 @@ int at_read(char* buf, size_t max_len, uint64_t timeout_ms)
 
         if (ret > 0) {
             buf[idx++] = c;
+            last_rx = now_ms();
+        }
+        else if (ret < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            LOG_ERR("Read failed: %s", strerror(errno));
+            return -1;
+        }
 
-            if (idx >= 4) {
-                if (strstr(buf, "\r\nOK\r\n") != NULL)
-                    break;
-                if (strstr(buf, "\r\nERROR\r\n") != NULL)
-                    break;
-            }
-        }
-        else if (ret == 0) {
-            usleep(1000); 
-        }
-        else {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                usleep(1000);
-            } else {
-                LOG_ERR("Read failed: %s", strerror(errno));
-                return -1; 
-            }
-        }
+        buf[idx] = '\0';
+
+        bool have_ok    = (strstr(buf, "\r\nOK\r\n")    != NULL);
+        bool have_error = (strstr(buf, "\r\nERROR\r\n") != NULL);
+
+        if ((have_ok || have_error) && (now_ms() - last_rx >= QUIET_MS)) 
+            break;
 
         if (now_ms() - start >= timeout_ms)
             break;
+
+        usleep(1000);
     }
 
     buf[idx] = '\0';
