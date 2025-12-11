@@ -113,7 +113,7 @@ void readGpsData(uint8_t* buf, int len)
 
 int GPS_init(char* uart_file_path)
 {
-	uart_fd = uart_init(uart_file_path);
+	uart_fd = uart_init(uart_file_path, false);
     if (uart_fd < 0) {
         return -1;
 	}

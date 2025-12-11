@@ -5,12 +5,25 @@
 #ifndef _UART_H_
 #define _UART_H_
 #include <stdint.h>
+#include <stdbool.h>
+#include "device_setup.h"
 
-/* file path of UART1 in BBB */
+/* file path of UART in BBB/RPi */
+#if BBB
 #define 	UART1_FILE_PATH			"/dev/ttyS1"
 #define 	UART2_FILE_PATH			"/dev/ttyS2"
+#define 	UART3_FILE_PATH			"/dev/ttyS3"
 #define 	UART4_FILE_PATH			"/dev/ttyS4"
 #define 	UART5_FILE_PATH			"/dev/ttyS5"
+
+#elif RPI
+#define 	UART0_FILE_PATH			"/dev/ttyAMA0"
+#define 	UART1_FILE_PATH			"/dev/ttyAMA1"
+#define 	UART2_FILE_PATH			"/dev/ttyAMA2"
+#define 	UART3_FILE_PATH			"/dev/ttyAMA3"
+#define 	UART4_FILE_PATH			"/dev/ttyAMA4"
+#define 	UART5_FILE_PATH			"/dev/ttyAMA5"
+#endif
 
 /**
  * @brief   Read data from UART file
@@ -26,6 +39,6 @@ void readUART(int fd, uint8_t* buf, int len);
  * @param   UART_PATH is file path of UART
  * @return  uart fd if success; -1 otherwise
  */
-int uart_init(char* UART_PATH);
+int uart_init(char* UART_PATH, bool isSim);
 
 #endif

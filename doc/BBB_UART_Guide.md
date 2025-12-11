@@ -12,7 +12,7 @@ This command displays the current mode of the selected pin (gpio, uart, spi, pwm
 
 ## 2. Set Pin to UART Mode
 ```
-sudo config-pin P9_XX uart
+config-pin P9_XX uart
 ```
 Use this command to switch a pin into UART mode.
 

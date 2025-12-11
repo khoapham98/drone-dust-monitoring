@@ -12,14 +12,16 @@
 /* macros are used to turn modules ON/OFF for testing */
 #define     DUST_SENSOR_ENABLE      1
 #define     GPS_ENABLE              1
-#define     ENABLE_4G               1            
-#define     PARSE_EACH              0
+#define     SIM_ENALBE              0            
 
 /* macros to enable log */
 #define     LOG_TO_CONSOLE          1
 #define     LOG_TO_FILE             1
 #define     LOG_FILE_PATH           "doc/app.log"
 
+/* select board */
+#define     BBB                     1
+#define     RPI                     0
 /**
  * @brief   setup device 
  * @return  none
