@@ -6,13 +6,13 @@
 #define _DEVICE_SETUP_H_
 
 /* system macros */
-#define 	MAX_THREADS				3
+#define 	MAX_THREADS				4
 #define     RING_BUFFER_SIZE        2048
 
 /* macros are used to turn modules ON/OFF for testing */
 #define     DUST_SENSOR_ENABLE      1
 #define     GPS_ENABLE              1
-#define     SIM_ENALBE              0            
+#define     SIM_ENALBE              1            
 
 /* macros to enable log */
 #define     LOG_TO_CONSOLE          1
