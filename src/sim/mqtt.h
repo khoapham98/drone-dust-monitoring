@@ -127,6 +127,6 @@ void mqttSetTopic(void);
  * @param msg_len Length of the message in bytes.
  * @return none.
  */
-void mqttPulishMessage(char* msg, int msg_len);
+void mqttPublishMessage(char* msg, int msg_len);
 
 #endif

@@ -106,7 +106,7 @@ void mqttSetTopic(void)
     at_attach_resp_buffer(NULL, 0);
 }
 
-void mqttPulishMessage(char* msg, int msg_len)
+void mqttPublishMessage(char* msg, int msg_len)
 {
     mqttSetTopic();
 

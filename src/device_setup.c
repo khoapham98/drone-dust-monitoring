@@ -88,7 +88,7 @@ void* send2WebTask(void* arg)
         parseAllDataToJson(&json_ring_buf, lat, lon, pm25);
         char msg_buf[256] = {0};
         getJsonData(&json_ring_buf, msg_buf);
-        mqttPulishMessage(msg_buf, strlen(msg_buf));
+        mqttPublishMessage(msg_buf, strlen(msg_buf));
 	}
 
 	return arg;
