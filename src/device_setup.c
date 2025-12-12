@@ -88,7 +88,10 @@ void* send2WebTask(void* arg)
         parseAllDataToJson(&json_ring_buf, lat, lon, pm25);
         char msg_buf[256] = {0};
         getJsonData(&json_ring_buf, msg_buf);
+        LOG_INF("%s", msg_buf);
+#if SIM_ENALBE
         mqttPublishMessage(msg_buf, strlen(msg_buf));
+#endif
 	}
 
 	return arg;
@@ -132,6 +135,7 @@ static int setupSim(void)
     if (err != 0)
         return err;
 
+#if SIM_ENALBE
     simModuleInitCheck();
     simSetup4G();
 
@@ -162,6 +166,7 @@ static int setupSim(void)
     mqttPublishMessageConfig(&message);
     mqttCreateClient();
     mqttConnectBroker();
+#endif
 
     err = pthread_create(&thread[2], NULL, send2WebTask, NULL);
     if (err != 0) 
