@@ -69,13 +69,10 @@ eSimResult simCheckReady(void)
     if (at_send_wait(AT_CMD_CHECK_READY, resp, sizeof(resp), 1000) < 0)
         return WAIT;
 
-    if (strstr(resp, "ERROR"))
-        return FAIL;
-
     if (strstr(resp, "CPIN: READY"))
         return PASS;
 
-    return WAIT;
+    return FAIL;
 }
 
 eSimResult simCheckRegEps(void)

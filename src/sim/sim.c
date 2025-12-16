@@ -147,13 +147,14 @@ void mqttAccquiredStatusHandler(void)
 {
     eSimResult res = mqttAcquireClient(client.index, client.ID, server.type);
 
-    if (res == FAIL) {
-        mqttDisconnect(client.index, DISCONNECT_TIMEOUT_180S);
-        mqttReleaseClient(client.index);
+    if (res != FAIL) {
+        updateSimState(res, STATE_PDP_ACTIVE, STATE_MQTT_CONNECT);
         return;
     }
 
-    updateSimState(res, STATE_PDP_ACTIVE, STATE_MQTT_CONNECT);
+    mqttDisconnect(client.index, DISCONNECT_TIMEOUT_180S);
+    mqttReleaseClient(client.index);
+    updateSimState(FAIL, STATE_PDP_ACTIVE, STATE_MQTT_CONNECT);
 }
 
 void mqttConnectedStatusHandler(void)
