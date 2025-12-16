@@ -116,7 +116,7 @@ void* dataHandlerTask(void* arg)
 
 static int setupDustSensor(void) 
 {
-    int err = dustSensor_init(UART1_FILE_PATH);    
+    int err = dustSensor_uart_init(UART1_FILE_PATH);    
     if (err != 0)
         return err;
 
@@ -132,7 +132,7 @@ static int setupDustSensor(void)
 
 static int setupGPS(void) 
 {
-    int err = GPS_init(UART2_FILE_PATH);    
+    int err = GPS_uart_init(UART2_FILE_PATH);    
     if (err != 0)
         return err;
 

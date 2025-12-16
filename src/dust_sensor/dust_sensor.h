@@ -41,10 +41,10 @@ void checkDustData(uint8_t* buf);
 void printDustData(uint8_t* buf);
 
 /**
- * @brief   Initialize dust sensor 
+ * @brief   Initialize the UART interface for dust sensor communication
  * @param   uart_file_path is file path of UART
  * @return  0 if success; -1 otherwise
  */
-int dustSensor_init(char* uart_file_path);
+int dustSensor_uart_init(char* uart_file_path);
 
 #endif

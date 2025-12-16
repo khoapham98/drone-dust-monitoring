@@ -29,10 +29,10 @@ void getGpsCoordinates(char* buf, double* latitude, double* longitude);
 void readGpsData(uint8_t* buf, int len);
 
 /**
- * @brief   Initialize GPS
+ * @brief   Initialize the UART interface for GPS communication
  * @param   uart_file_path is file path of UART
  * @return  0 if success; -1 otherwise
  */
-int GPS_init(char* uart_file_path);
+int GPS_uart_init(char* uart_file_path);
 
 #endif
