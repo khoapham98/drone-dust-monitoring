@@ -1,200 +1,169 @@
 /**
  * @file    sim.h
- * @brief   High-level SIM API header file built on top of the AT command driver
+ * @brief   SIM state handlers for FSM control and state transition logic
  */
 #ifndef _SIM_H_
 #define _SIM_H_
 
-#define     VIETTEL         1
-#define     MOBIFONE        0
-#define     VINAPHONE       0
+enum ClientIndex {
+    FIRST,
+    SECOND
+};
 
-/******************************************************************************/
-/* Mode switch */
-/******************************************************************************/
+enum ServerType {
+    TCP,
+    SSL_TLS
+};
 
-/**
- * @brief Enter command mode using "+++".
- * @return 0 on success, -1 on failure.
- */
-int simEnterCmdMode(void);
+enum simState {
+    STATE_RESET,
+    STATE_AT_SYNC,
+    STATE_SIM_READY,
+    STATE_NET_READY,
+    STATE_PDP_ACTIVE,        
+    STATE_MQTT_START,
+    STATE_MQTT_ACCQ,
+    STATE_MQTT_CONNECT,
+    STATE_MQTT_READY
+};
 
-/**
- * @brief Enter data mode using "ATO".
- * @return 0 on success, -1 on failure.
- */
-int simEnterDataMode(void);
+typedef enum simState eSimState;
+typedef enum ServerType eServerType;
+typedef enum ClientIndex eIndex;
 
+struct ClientConfig {
+    eIndex index;
+    char* ID; 
+    char* userName;
+    char* password;
+    int keepAliveTime;
+    int cleanSession;
+};
 
-/******************************************************************************/
-/* Basic AT operations */
-/******************************************************************************/
+struct ServerConfig {
+    eServerType type;
+    char* addr;
+};
 
-/**
- * @brief Check if the module is alive (AT → OK).
- * @return 0 on success, -1 on failure.
- */
-int simCheckAlive(void);
+struct PublishMessageConfig {
+    char* topic;
+    int topicLength;
+    int qos;
+    int publishTimeout;
+};
 
-/**
- * @brief Enable AT command echo (ATE1).
- * @return 0 on success, -1 on failure.
- */
-int simEchoOn(void);
+typedef struct ClientConfig mqttClient;
+typedef struct ServerConfig mqttServer;
+typedef struct PublishMessageConfig mqttPubMsg;
 
-/**
- * @brief Disable AT command echo (ATE0).
- * @return 0 on success, -1 on failure.
- */
-int simEchoOff(void);
+#define     CLIENT_ID_DEFAULT           "DefaultClient"
+#define     SERVER_ADDR_DEFAULT         "tcp://test.mosquitto.org:1883"
 
+#define     CLIENT_ID_MIN_LEN_BYTE      1
+#define     CLIENT_ID_MAX_LEN_BYTE      128  
 
-/******************************************************************************/
-/* SIM & Signal */
-/******************************************************************************/
+#define     SERVER_ADDR_MIN_LEN_BYTE    9
+#define     SERVER_ADDR_MAX_LEN_BYTE    256
 
-/**
- * @brief Check SIM card readiness (AT+CPIN?).
- * @return 0 on success, -1 on failure.
- */
-int simCheckReady(void);
+#define     TOPIC_PUB_MIN_LEN_BYTE      1
+#define     TOPIC_PUB_MAX_LEN_BYTE      1024
 
-/**
- * @brief Read SIM ICCID (AT+CICCID).
- * @return 0 on success, -1 on failure.
- */
-int simReadICCID(void);
+#define     MESSAGE_MIN_LEN_BYTE        1
+#define     MESSAGE_MAX_LEN_BYTE        10240
 
-/**
- * @brief Read signal strength (AT+CSQ).
- * @return 0 on success, -1 on failure.
- */
-int simCheckSignal(void);
+#define     MQTT_KEEPALIVE_30S          30
+#define     MQTT_KEEPALIVE_60S          60
+#define     MQTT_KEEPALIVE_120S         120
+#define     MQTT_KEEPALIVE_300S         300
+#define     MQTT_KEEPALIVE_600S         600
 
+#define     PUBLISH_TIMEOUT_30S         30
+#define     PUBLISH_TIMEOUT_60S         60
+#define     PUBLISH_TIMEOUT_120S        120
+#define     PUBLISH_TIMEOUT_180S        180
 
-/******************************************************************************/
-/* Network Registration */
-/******************************************************************************/
+#define     MQTT_CLEAN_SESSION          1   
+#define     MQTT_PERSIST_SESSION        0   
 
-/**
- * @brief Check circuit-switched network registration (AT+CREG?).
- * @return 0 on success, -1 on failure.
- */
-int simCheckRegNet(void);
-
-/**
- * @brief Check GPRS/packet-switched registration (AT+CGREG?).
- * @return 0 on success, -1 on failure.
- */
-int simCheckRegGprs(void);
-
-/**
- * @brief Check EPS/LTE registration (AT+CEREG?).
- * @return 0 on success, -1 on failure.
- */
-int simCheckRegEps(void);
+#define     MQTT_QOS_0    0         // At most once 
+#define     MQTT_QOS_1    1         // At least once 
+#define     MQTT_QOS_2    2         // Exactly once 
 
 /**
- * @brief Read current operator (AT+COPS?).
- * @return 0 on success, -1 on failure.
+ * @brief Initialize an MQTT client structure with default values.
+ * @param cli Pointer to mqttClient structure to initialize.
+ * @return none.
  */
-int simCheckOperator(void);
-
-
-/******************************************************************************/
-/* PDP Context */
-/******************************************************************************/
+void mqttClientInit(mqttClient* cli);
 
 /**
- * @brief Set PDP context APN (AT+CGDCONT).
- * @return 0 on success, -1 on failure.
+ * @brief Initialize MQTT server configuration.
+ * @param ser Pointer to mqttServer structure to initialize.
+ * @return none.
  */
-int simSetPdpContext(void);
+void mqttServerInit(mqttServer* ser);
 
 /**
- * @brief Attach to GPRS service (AT+CGATT=1).
- * @return 0 on success, -1 on failure.
+ * @brief Initialize MQTT publish message configuration.
+ * @param msg Pointer to mqttPubMsg structure to initialize.
+ * @return none.
  */
-int simAttachGprs(void);
+void mqttPublishMessageConfig(mqttPubMsg* msg);
 
 /**
- * @brief Detach from GPRS service (AT+CGATT=0).
- * @return 0 on success, -1 on failure.
+ * @brief Handle SIM reset state.
+ * @return none.
  */
-int simDetachGprs(void);
+void simResetStatusHandler(void);
 
 /**
- * @brief Activate PDP context (AT+CGACT=1,1).
- * @return 0 on success, -1 on failure.
+ * @brief Handle AT synchronization state.
+ * @return none.
  */
-int simActivatePdp(void);
+void atSyncStatusHandler(void);
 
 /**
- * @brief Deactivate PDP context (AT+CGACT=0,1).
- * @return 0 on success, -1 on failure.
+ * @brief Handle SIM ready check state.
+ * @return none.
  */
-int simDeactivatePdp(void);
+void simReadyStatusHandler(void);
 
 /**
- * @brief Read assigned IP address (AT+CGPADDR).
- * @return 0 on success, -1 on failure.
+ * @brief Handle network registration state.
+ * @return none.
  */
-int simGetIpAddr(void);
+void netReadyStatusHandler(void);
 
 /**
- * @brief Check PDP context (AT+CGDCONT).
- * @return 0 on success, -1 on failure.
+ * @brief Handle PDP activation state.
+ * @return none.
  */
-int simCheckPdp(void); 
-
-/******************************************************************************/
-/* Self Test */
-/******************************************************************************/
+void pdpActiveStatusHandler(void);
 
 /**
- * @brief  Query firmware version using AT+GMR.
- * @return 0 on success, -1 on failure.
+ * @brief Handle MQTT service start state.
+ * @return none.
  */
-int simCheckFwVersion(void);
+void mqttStartStatusHandler(void);
 
 /**
- * @brief  Query the hardware model using AT+CGMM.
- * @return 0 on success, -1 on failure.
+ * @brief Handle MQTT client acquire state.
+ * @return none.
  */
-int simCheckModel(void);
+void mqttAccquiredStatusHandler(void);
 
 /**
- * @brief  Query the manufacturer information using AT+CGMI.
- * @return 0 on success, -1 on failure.
+ * @brief Handle MQTT connection state.
+ * @return none.
  */
-int simCheckManufacturer(void);
+void mqttConnectedStatusHandler(void);
 
 /**
- * @brief  Query the IMEI using AT+CGSN.
- * @return 0 on success, -1 on failure.
+ * @brief Handle MQTT ready/data state.
+ * @param msg Pointer to received message buffer.
+ * @param len Length of received message.
+ * @return none.
  */
-int simCheckImei(void);
-
-/**
- * @brief  Query the current functionality mode using AT+CFUN?.
- * @return 0 on success, -1 on failure.
- */
-int simCheckFunMode(void);
-
-/******************************************************************************/
-/* Precheck */
-/******************************************************************************/
-
-/**
- * @brief  Module self-test
- * @return none
- */
-void simModuleInitCheck(void);
-
-/**
- * @brief  Setup 4G
- * @return none
- */
-void simSetup4G(void);
+void mqttReadyStatusHandler(char* msg, int len);
 
 #endif

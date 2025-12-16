@@ -1,319 +1,177 @@
 /**
  * @file    sim.c
- * @brief   High-level SIM API source file built on top of the AT command driver
+ * @brief   SIM state handlers for FSM control and state transition logic
  */
 #include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include "sys/log.h"
+#include "sim_cmd.h"
 #include "sim.h"
-#include "at_cmd.h"
 
-typedef int(*callback_t)(void);
+static mqttClient client = {0};
+static mqttServer server = {0};
+static mqttPubMsg message = {0};
 
-static bool sim_resp_ok(char* buf)
+eSimState preState = STATE_RESET;
+eSimState simState = STATE_AT_SYNC;
+
+void mqttClientInit(mqttClient* cli)
 {
-    if (buf == NULL) return false;
+    client.index = cli->index; 
+    client.keepAliveTime = cli->keepAliveTime;
+    client.cleanSession  = cli->cleanSession;
 
-    if (strstr(buf, "OK") != NULL)
-        return true;
+    if (cli->ID != NULL && 
+    strlen(cli->ID) >= CLIENT_ID_MIN_LEN_BYTE && 
+    strlen(cli->ID) < CLIENT_ID_MAX_LEN_BYTE) {
+        client.ID = cli->ID;
+    } else {
+        client.ID = CLIENT_ID_DEFAULT;
+        LOG_WRN("Using default client ID: %s", client.ID);
+    }
+
+    if (cli->userName != NULL)
+        client.userName = cli->userName;
+    else 
+        client.userName = "";
+
+    if (cli->password != NULL)
+        client.password = cli->password;
     else
-        return false;
+        client.password = "";
 }
 
-static int retry(callback_t cb, size_t retry_cnt)
+void mqttServerInit(mqttServer* ser)
 {
-    if (cb == NULL) return -1;
+    server.type = ser->type;
 
-    size_t cnt = 0;
-    char resp[RESP_FRAME] = {0};
+    if (ser->addr != NULL && 
+    strlen(ser->addr) >= SERVER_ADDR_MIN_LEN_BYTE && strlen(ser->addr) < SERVER_ADDR_MAX_LEN_BYTE) {
+        server.addr = ser->addr;
+        LOG_INF("Set server address to: %s", server.addr);
+    } else {
+        server.addr = SERVER_ADDR_DEFAULT;
+        LOG_WRN("Using default server address: %s", server.addr);
+    }
+}
 
-    at_attach_resp_buffer(resp, sizeof(resp));
+void mqttPublishMessageConfig(mqttPubMsg* msg)
+{
+    if (msg->topic == NULL) {
+        LOG_WRN("Topic name is missing!!!");
+        LOG_ERR("Configure publish message failed");
+        return;
+    }
 
-    while (cnt <= retry_cnt) {
-        memset(resp, 0, sizeof(resp));
+    message.topic = msg->topic;
+    message.topicLength = msg->topicLength;
+    message.qos = msg->qos;
+    message.publishTimeout = msg->publishTimeout;
+}
 
-        cb();
+static void updateSimState(eSimResult res, eSimState backState, eSimState nextState)
+{
+    if (res == FAIL) {
+        simState = preState;
+        preState = backState;
+    } else if (res == PASS) {
+        preState = simState;
+        simState = nextState;
+    } else {
+        sleep(1);
+    }
+}
 
-        if (sim_resp_ok(resp) == true) 
+void simResetStatusHandler(void)
+{
+    while (1) {
+        if (simCheckAlive() == PASS)
             break;
-        
-        cnt++;
-        if (cnt <= retry_cnt) {
-            sleep(1);
-            LOG_WRN("retry #%d", cnt);
-        }
+        sleep(2);
     }
 
-    at_attach_resp_buffer(NULL, 0);
-    if (cnt > retry_cnt) return -1;
-    return cnt; 
+    updateSimState(PASS, STATE_RESET, STATE_AT_SYNC);
+} 
+
+void atSyncStatusHandler(void)
+{
+    eSimResult res = PASS;
+    if (simCheckAlive() == FAIL || simEchoOff() == FAIL) {
+        res = FAIL;
+    }
+
+    updateSimState(res, STATE_RESET, STATE_SIM_READY);
 }
 
-/* ===== SWITCH MODE ===== */
-
-int simEnterCmdMode(void)
+void simReadyStatusHandler(void)
 {
-    return at_send_wait(CMD_ENTER_CMD_MODE, 1500);
+    eSimResult res = simCheckReady();
+    updateSimState(res, STATE_RESET, STATE_NET_READY);
 }
 
-int simEnterDataMode(void)
+void netReadyStatusHandler(void)
 {
-    return at_send_wait(CMD_ENTER_DATA_MODE, 1500);
+    eSimResult res = simCheckRegEps();
+    updateSimState(res, STATE_AT_SYNC, STATE_PDP_ACTIVE);
 }
 
-/* ===== BASIC CHECK ===== */
-
-int simCheckAlive(void)
+void pdpActiveStatusHandler(void)
 {
-    return at_send_wait(AT_CMD_BASIC_CHECK, 500);
+    eSimResult res = simSetPdpContext();
+    if (res != PASS)    
+        goto end;
+
+    res = simAttachGprs();
+    if (res != PASS)
+        goto end;
+
+    res = simActivatePdp();
+
+end:
+    updateSimState(res, STATE_SIM_READY, STATE_MQTT_START);
 }
 
-int simEchoOn(void)
+void mqttStartStatusHandler(void)
 {
-    return at_send_wait(AT_CMD_ECHO_ON, 500);
+    eSimResult res = mqttStartService();
+    updateSimState(res, STATE_NET_READY, STATE_MQTT_ACCQ);
 }
 
-int simEchoOff(void)
+void mqttAccquiredStatusHandler(void)
 {
-    return at_send_wait(AT_CMD_ECHO_OFF, 500);
+    eSimResult res = mqttAcquireClient(client.index, client.ID, server.type);
+    if (res == FAIL)
+        res = mqttReleaseClient(client.index);
+
+    updateSimState(res, STATE_PDP_ACTIVE, STATE_MQTT_CONNECT);
 }
 
-/* ===== SIM & SIGNAL ===== */
-
-int simReadICCID(void)
+void mqttConnectedStatusHandler(void)
 {
-    return at_send_wait(AT_CMD_READ_ICCID, 1000);
+    eSimResult res = mqttConnect(&client, &server);
+    updateSimState(res, STATE_MQTT_START, STATE_MQTT_READY);
 }
 
-int simCheckReady(void)
+void mqttReadyStatusHandler(char* msg, int len)
 {
-    return at_send_wait(AT_CMD_CHECK_READY, 1000);
-}
-
-int simCheckSignal(void)
-{
-    return at_send_wait(AT_CMD_CHECK_SIGNAL, 1000);
-}
-
-int simCheckRegNet(void)
-{
-    return at_send_wait(AT_CMD_CHECK_REG_NET, 1500);
-}
-
-int simCheckRegGprs(void)
-{
-    return at_send_wait(AT_CMD_CHECK_REG_GPRS, 1500);
-}
-
-int simCheckRegEps(void)
-{
-    return at_send_wait(AT_CMD_CHECK_REG_EPS, 1500);
-}
-
-int simCheckOperator(void)
-{
-    return at_send_wait(AT_CMD_CHECK_OPERATOR, 1500);
-}
-
-/* ===== PDP CONTEXT / PACKET DATA ===== */
-
-int simSetPdpContext(void)
-{
-#if VIETTEL
-    char* apn = "v-internet";
-#elif MOBIFONE
-    char* apn = "m-wap";
-#elif VINAPHONE
-    char* apn = "m3-world";
-#endif
-    char cmd[128] = {0};
-    snprintf(cmd, sizeof(cmd), AT_CMD_SET_PDP_CONTEXT, apn);
-    return at_send_wait(cmd, 2000);
-}
-
-int simAttachGprs(void)
-{
-    return at_send_wait(AT_CMD_ATTACH_GPRS, 5000);
-}
-
-int simDetachGprs(void)
-{
-    return at_send_wait(AT_CMD_DETACH_GPRS, 3000);
-}
-
-int simActivatePdp(void)
-{
-    return at_send_wait(AT_CMD_ACTIVATE_PDP, 8000);
-}
-
-int simDeactivatePdp(void)
-{
-    return at_send_wait(AT_CMD_DEACTIVATE_PDP, 5000);
-}
-
-int simGetIpAddr(void)
-{
-    return at_send_wait(AT_CMD_GET_IP_ADDR, 2000);
-}
-
-int simCheckPdp(void)
-{
-    return at_send_wait(AT_CMD_CHECK_PDP_CONTEXT, 1000);
-}
-
-/* ===== MODULE SIM SELF-TEST ===== */
-
-int simCheckFwVersion(void)
-{
-    return at_send_wait(AT_CMD_GET_FW_VERSION, 2000);
-}
-
-int simCheckModel(void)
-{
-    return at_send_wait(AT_CMD_GET_MODEL, 2000);
-}
-
-int simCheckManufacturer(void)
-{
-    return at_send_wait(AT_CMD_GET_MANUFACTURER, 2000);
-}
-
-int simCheckImei(void)
-{
-    return at_send_wait(AT_CMD_GET_IMEI, 2000);
-}
-
-int simCheckFunMode(void)
-{
-    return at_send_wait(AT_CMD_GET_FUN_MODE, 2000);
-}
-
-/* ===== WRAPPER APIs ===== */
-
-void simModuleInitCheck(void)
-{
-    int err = 0;
-
-    LOG_INF("Module Check start");
-
-    err = simEnterCmdMode();
-    if (err < 0) {
-        LOG_ERR("Enter CMD mode failed");
+    if (len > 100) {
+        LOG_WRN("Data package invalid (%d bytes) - skip", len);
         return;
     }
 
-    err = simCheckAlive();
-    if (err < 0) {
-        LOG_ERR("AT check failed");
+    eSimResult res = mqttSetPublishTopic(client.index, message.topic, message.topicLength);
+    if (res != PASS)
+        goto end;
+
+    res = mqttSetPayload(client.index, msg, len);
+    if (res != PASS)
+        goto end;
+   
+    res = mqttPublish(client.index, message.qos, message.publishTimeout);
+    if (res == PASS)
         return;
-    }
 
-    err = simEchoOff();
-    if (err < 0) {
-        LOG_ERR("Disable echo failed");
-        return;
-    }
-
-    err = simCheckFwVersion();
-    if (err < 0) {
-        LOG_ERR("Check Firmware version failed");
-        return;
-    }
-
-    err = simCheckModel();
-    if (err < 0) {
-        LOG_ERR("Check model failed");
-        return;
-    }
-
-    err = simCheckManufacturer();
-    if (err < 0) {
-        LOG_ERR("Check manufacturer failed");
-        return;
-    }
-
-    err = simCheckImei();
-    if (err < 0) {
-        LOG_ERR("Check IMEI failed");
-        return;
-    }
-
-    err = simCheckFunMode();
-    if (err < 0) {
-        LOG_ERR("Check CFun mode failed");
-        return;
-    }
-    
-    LOG_INF("Module check done");
-}
-
-void simSetup4G(void)
-{
-    int err = 0;
-
-    LOG_INF("setup 4G start");
-
-    err = retry(simCheckReady, 5);
-    if (err < 0) {
-        LOG_ERR("SIM not ready (CPIN?)");
-        return;
-    }
-
-    err = simReadICCID();
-    if (err < 0) {
-        LOG_ERR("Read ICCID failed");
-        return;
-    }
-
-    err = retry(simCheckSignal, 5);
-    if (err < 0) {
-        LOG_ERR("Read signal (CSQ) failed");
-        return;
-    }
-
-    err = retry(simCheckRegEps, 8);
-    if (err < 0) {
-        LOG_ERR("Network registration (CEREG) failed");
-        return;
-    }
-
-    err = simCheckOperator();
-    if (err < 0) {
-        LOG_ERR("Read operator (COPS) failed");
-        return;
-    }
-    
-    err = retry(simAttachGprs, 5);
-    if (err < 0) {
-        LOG_ERR("Attach GPRS failed");
-        return;
-    }
-
-    err = simSetPdpContext();
-    if (err < 0) {
-        LOG_ERR("Set PDP context failed");
-        return;
-    }
-
-    err = simCheckPdp();
-    if (err < 0) {
-        LOG_ERR("Check PDP context failed");
-        return;
-    }
-
-    err = retry(simActivatePdp, 5);
-    if (err < 0) {
-        LOG_ERR("Activate PDP failed");
-        return;
-    }
-
-    err = retry(simGetIpAddr, 5);
-    if (err < 0) {
-        LOG_ERR("Get IP address failed");
-        return;
-    }
-
-    LOG_INF("Setup 4G done");
+end:
+    updateSimState(res, STATE_MQTT_ACCQ, STATE_MQTT_READY);
 }
