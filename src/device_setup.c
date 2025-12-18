@@ -16,7 +16,8 @@
 #include "sys/json.h"
 #include "src/sim/at.h"
 #include "src/sim/sim.h"
-#include "src/sim/mqtt_config.h"
+#include "transport/mqtt.h"
+#include "transport/transport_config.h"
 
 /* thread array for manage */
 pthread_t thread[MAX_THREADS];

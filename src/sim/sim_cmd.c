@@ -2,12 +2,12 @@
  * @file    sim_cmd.c
  * @brief   High-level SIM API source file built on top of the AT command driver
  */
-#include <stdio.h>
 #include <string.h>
 #include "sys/log.h"
 #include "at.h"
 #include "sim_cmd.h"
 #include "sim.h"
+#include "transport/mqtt.h"
 
 static void mqttLogResult(eMqttResult res);
 
