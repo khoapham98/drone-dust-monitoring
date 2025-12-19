@@ -2,7 +2,6 @@
  * @file    device_setup.c
  * @brief   setup device source file
  */
-#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <pthread.h>
@@ -16,25 +15,12 @@
 #include "src/gps/gps.h"
 #include "sys/json.h"
 #include "src/sim/at.h"
-#include "src/sim/sim.h"
-#include "src/sim/mqtt_config.h"
+#include "transport/mqtt.h"
+#include "transport/transport_config.h"
+#include "fsm/fsm.h"
 
 /* thread array for manage */
 pthread_t thread[MAX_THREADS];
-
-/* sim state */
-extern eSimState simState;
-static const char* simStateStr[] = {
-    "STATE_RESET",
-    "STATE_AT_SYNC",
-    "STATE_SIM_READY",
-    "STATE_NET_READY",
-    "STATE_PDP_ACTIVE",
-    "STATE_MQTT_START",
-    "STATE_MQTT_ACCQ",
-    "STATE_MQTT_CONNECT",
-    "STATE_MQTT_READY"
-};
 
 /* semaphore for dust data and GPS data */
 sem_t dustDataDoneSem;
@@ -85,48 +71,10 @@ void* updateGPSTask(void* arg)
 
 void* send2WebTask(void* arg)
 {
-	while (1) {
-        LOG_INF("%s", simStateStr[simState]);
-        switch (simState)
-        {
-        case STATE_RESET:
-            simResetStatusHandler();
-            break;
-        case STATE_AT_SYNC:
-            atSyncStatusHandler();
-            break;
-        case STATE_SIM_READY:
-            simReadyStatusHandler();
-            break;
-        case STATE_NET_READY:
-            netReadyStatusHandler();
-            break;
-        case STATE_PDP_ACTIVE:
-            pdpActiveStatusHandler();
-            break;
-        case STATE_MQTT_START:
-            mqttStartStatusHandler();
-            break;
-        case STATE_MQTT_ACCQ:
-            mqttAccquiredStatusHandler();
-            break;
-        case STATE_MQTT_CONNECT:
-            mqttConnectedStatusHandler();
-            break;
-        case STATE_MQTT_READY:
-            pthread_mutex_lock(&jsonLock);
-            while (!jsonReady)
-                pthread_cond_wait(&jsonCond, &jsonLock);
+    fsm_context_init();
 
-            char msg[RING_BUFFER_SIZE] = {0};
-            getJsonData(&json_ring_buf, msg);
-            jsonReady = false;
-            pthread_mutex_unlock(&jsonLock);
-            mqttReadyStatusHandler(msg, strlen(msg));
-            break;
-        default:
-            break;
-        }
+	while (1) {
+        fsmHandler();
 	}
 
 	return arg;

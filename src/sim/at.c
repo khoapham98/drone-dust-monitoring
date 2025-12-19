@@ -2,7 +2,6 @@
  * @file    at.c
  * @brief   Low-level AT command source file for send AT commands & receive responses
  */
-#include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>

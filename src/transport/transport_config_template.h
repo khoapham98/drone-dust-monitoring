@@ -1,11 +1,12 @@
 /**
- * @file    mqtt_config_template.h
- * @brief   MQTT configuration template file for credentials and topics
- * @attention Rename this file to mqtt_config.h before adding real credentials
+ * @file    transport_config_template.h
+ * @brief   Transport configuration template file for credentials and topics
+ * @attention Rename this file to transport_config.h before adding real credentials
  */
-#ifndef _MQTT_CONFIG_H_
-#define _MQTT_CONFIG_H_
+#ifndef _TRANSPORT_CONFIG_H_
+#define _TRANSPORT_CONFIG_H_
 
+/* =====    MQTT    ===== */
 #define     MQTT_CLIENT_ID      "ENTER_CLIENT_ID"
 #define     MQTT_USERNAME       "ENTER_USERNAME"
 #define     MQTT_PASSWORD       "ENTER_PASSWORD"

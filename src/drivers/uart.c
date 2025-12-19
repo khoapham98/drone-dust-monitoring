@@ -2,7 +2,6 @@
  * @file	uart.c
  * @brief	uart driver source file
  */
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>

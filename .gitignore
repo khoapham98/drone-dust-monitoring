@@ -15,4 +15,4 @@
 .vscode/
 build/
 
-src/sim/mqtt_config.h
+src/transport/transport_config.h

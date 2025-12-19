@@ -2,7 +2,6 @@
  * @file    gps.c
  * @brief   ATGM336H driver source file
  */
-#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include "sys/log.h"
@@ -130,7 +129,7 @@ int GPS_uart_init(char* uart_file_path)
 
 static size_t getMessageLen(char* str, size_t len)
 {
-	for (int i = 0; i + 1 < len; i++) {
+	for (size_t i = 0; i + 1 < len; i++) {
 		if (str[i] == '\r' && str[i + 1] == '\n')
 			return i;
 	}

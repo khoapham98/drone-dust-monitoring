@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <pthread.h>
 #include "sys/log.h"
 #include "device_setup.h"

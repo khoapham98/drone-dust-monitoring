@@ -4,7 +4,7 @@
  */
 #ifndef _SIM_CMD_H_
 #define _SIM_CMD_H_
-#include "sim.h"
+#include "transport/mqtt.h"
 
 #define     VIETTEL         1
 #define     MOBIFONE        0

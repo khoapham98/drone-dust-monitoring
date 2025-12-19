@@ -4,7 +4,6 @@
  */
 #ifndef _JSON_H_
 #define _JSON_H_
-#include <stdio.h>
 #include "sys/ringbuffer.h"
 
 /**
