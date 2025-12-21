@@ -128,6 +128,8 @@ void http_context_init(http_ctx_t* http_ctx)
         return;
     }
 
+    int cnt = 0;
+
     ctx.url = http_ctx->url;
     ctx.method = http_ctx->method;
     ctx.ConnTimeout  = http_ctx->ConnTimeout;
@@ -160,8 +162,6 @@ set_accept_type:
         goto set_headers;
     }
     ctx.acceptType = http_ctx->acceptType;
-
-    int cnt = 0;
 
 set_headers:
     for (int i = 0; i < ctx.headerCount; i++) {
