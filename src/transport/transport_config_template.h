@@ -16,4 +16,9 @@
 #define     MQTT_PUB_TOPIC      "your/pub/topic"
 #define     MQTT_SUB_TOPIC      "your/sub/topic"
 
+/* ===== HTTP ===== */
+#define     HTTP_SERVER_URL     "http://your_server.com/api"
+#define     HTTP_ACCEPT_TYPE    "application/json"
+#define     HTTP_CONTENT_TYPE   "application/json"
+
 #endif
