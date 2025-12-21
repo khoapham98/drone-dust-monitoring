@@ -551,7 +551,7 @@ static void mqttLogResult(eMqttResult res)
     }
 }
 
-/* ===== HTTPS ===== */
+/* ===== HTTP ===== */
 
 eSimResult httpStartService(void)
 {
