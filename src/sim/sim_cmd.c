@@ -198,8 +198,8 @@ eSimResult mqttStartService(void)
     if (str == NULL) 
         return FAIL;
 
-    int err = -1;
-    sscanf(str, "CMQTTSTART: %d", &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTSTART: %d", (int*) &err);
 
     mqttLogResult(err);
 
@@ -228,8 +228,8 @@ eSimResult mqttReleaseClient(int index)
         return FAIL;
 
     int clientIndex = -1;
-    int err = -1;
-    sscanf(str, "CMQTTREL: %d,%d", &clientIndex, &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTREL: %d,%d", &clientIndex, (int*) &err);
 
     mqttLogResult(err);
 
@@ -258,8 +258,8 @@ eSimResult mqttAcquireClient(int index, char* id, int type)
         return FAIL;
 
     int clientIndex = -1;
-    int err = -1;
-    sscanf(str, "CMQTTACCQ: %d,%d", &clientIndex, &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTACCQ: %d,%d", &clientIndex, (int*) &err);
 
     mqttLogResult(err);
 
@@ -285,8 +285,8 @@ eSimResult mqttDisconnect(int index, int timeout)
         return FAIL;
 
     int clientIndex = -1;
-    int err = -1;
-    sscanf(str, "CMQTTDISC: %d,%d", &clientIndex, &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTDISC: %d,%d", &clientIndex, (int*) &err);
 
     mqttLogResult(err);
 
@@ -313,8 +313,8 @@ eSimResult mqttConnect(mqttClient* cli, mqttServer* ser)
         return FAIL;
 
     int clientIndex = -1;
-    int err = -1;
-    sscanf(str, "CMQTTCONNECT: %d,%d", &clientIndex, &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTCONNECT: %d,%d", &clientIndex, (int*) &err);
 
     mqttLogResult(err);
 
@@ -341,8 +341,8 @@ eSimResult mqttSetPublishTopic(int index, char* topic, int len)
             return FAIL;
 
         int clientIndex = -1;
-        int err = -1;
-        sscanf(str, "CMQTTTOPIC: %d,%d", &clientIndex, &err);
+        eMqttResult err = -1;
+        sscanf(str, "CMQTTTOPIC: %d,%d", &clientIndex, (int*) &err);
 
         mqttLogResult(err);
 
@@ -383,8 +383,8 @@ eSimResult mqttSetPayload(int index, char* msg, int len)
             return FAIL;
 
         int clientIndex = -1;
-        int err = -1;
-        sscanf(str, "CMQTTPAYLOAD: %d,%d", &clientIndex, &err);
+        eMqttResult err = -1;
+        sscanf(str, "CMQTTPAYLOAD: %d,%d", &clientIndex, (int*) &err);
 
         mqttLogResult(err);
 
@@ -424,8 +424,8 @@ eSimResult mqttPublish(int index, int QoS, int pub_timeout)
         return FAIL;
 
     int clientIndex = -1;
-    int err = -1;
-    sscanf(str, "CMQTTPUB: %d,%d", &clientIndex, &err);
+    eMqttResult err = -1;
+    sscanf(str, "CMQTTPUB: %d,%d", &clientIndex, (int*) &err);
 
     if (err == MQTT_RES_OK)
         return PASS;
@@ -548,4 +548,178 @@ static void mqttLogResult(eMqttResult res)
         LOG_ERR("Unknown MQTT result (%d)", res);
         break;
     }
+}
+
+/* ===== HTTP ===== */
+
+eSimResult httpStartService(void)
+{
+    char resp[RESP_FRAME] = {0};
+
+    if (at_send_wait(AT_CMD_HTTP_START, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "ERROR")) {
+        LOG_INF("HTTP service already started");
+        return PASS;
+    } else if (strstr(resp, "OK")) {
+        return PASS;
+    }
+
+    return FAIL;
+}
+
+eSimResult httpStopService(void)
+{
+    char resp[RESP_FRAME] = {0};
+
+    if (at_send_wait(AT_CMD_HTTP_STOP, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "ERROR") || strstr(resp, "OK")) 
+        return PASS;
+
+    return FAIL;
+}
+
+eSimResult httpSetUrl(const char* url)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_URL, url);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+
+    return FAIL;
+}
+
+eSimResult httpSetContent(const char* content)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_CONTENT, content);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSetAccept(const char* acptType)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_ACCEPT, acptType);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSetConnectionTimeout(int timeout)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_CONN_TIMEOUT, timeout);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSetReceptionTimeout(int timeout)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_RECV_TIMEOUT, timeout);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSetSslContextId(int ctx_id)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_SSL, ctx_id);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSetCustomHeader(const char* header)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_USER_DATA, header);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (strstr(resp, "OK"))
+        return PASS;
+    
+    return FAIL;
+}
+
+eSimResult httpSendData(char* data, int len, int time)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd),
+            AT_CMD_HTTP_INPUT_DATA,
+            len, time);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+
+    if (!strstr(resp, "DOWNLOAD"))
+        return FAIL;
+
+    memset(resp, 0, sizeof(resp));
+
+    if (at_send_wait(data, resp, sizeof(resp), 200) < 0)
+        return WAIT;
+   
+    if (strstr(resp, "OK"))
+        return PASS;
+
+    return FAIL;
+}
+
+eSimResult httpSendAction(int method)
+{
+    char resp[RESP_FRAME] = {0};
+    char cmd[RESP_FRAME] = {0};
+    snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SEND_ACTION, method);
+
+    if (at_send_wait(cmd, resp, sizeof(resp), 2000) < 0)
+        return WAIT;
+
+    return PASS;
 }

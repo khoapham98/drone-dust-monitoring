@@ -69,27 +69,40 @@ enum mqtt_result {
     MQTT_RES_DISCONNECT_FAIL = 35
 };
 
+enum http_result{
+    HTTP_RES_CONTINUE = 100,
+    HTTP_RES_SWITCHING_PROTOCOLS = 101,  
+    HTTP_RES_OK = 200,
+    HTTP_RES_CREATED = 201,
+    HTTP_RES_ACCEPTED = 202,
+    HTTP_RES_NO_CONTENT = 204,
+    HTTP_RES_BAD_REQUEST = 400,
+    HTTP_RES_UNAUTHORIZED = 401,
+    HTTP_RES_FORBIDDEN = 403,
+    HTTP_RES_NOT_FOUND = 404,
+    HTTP_RES_METHOD_NOT_ALLOWED = 405,
+    HTTP_RES_INTERNAL_ERROR = 500,
+    HTTP_RES_NOT_IMPLEMENTED = 501,
+    HTTP_RES_BAD_GATEWAY = 502,
+    HTTP_RES_SERVICE_UNAVAILABLE = 503
+} ;
+
 typedef enum sim_cmd_t  eSimCmd;
 typedef enum sim_result eSimResult;
 typedef enum mqtt_result eMqttResult;
+typedef enum http_result eHttpResult; 
 
-/* SWITCH BETWEEN MODES */
+/* SIM & SIGNAL */
 #define CMD_ENTER_CMD_MODE          "+++\r\n"
 #define CMD_ENTER_DATA_MODE         "ATO\r\n"
-
-/* BASIC CHECK */
 #define AT_CMD_BASIC_CHECK          "AT\r\n"
 #define AT_CMD_ECHO_ON              "ATE1\r\n"
 #define AT_CMD_ECHO_OFF             "ATE0\r\n"
-
-/* SIM & SIGNAL */
 #define AT_CMD_READ_ICCID           "AT+CICCID\r\n"
 #define AT_CMD_CHECK_READY          "AT+CPIN?\r\n"
 #define AT_CMD_CHECK_SIGNAL         "AT+CSQ\r\n"
 #define AT_CMD_CHECK_REG_EPS        "AT+CEREG?\r\n"
 #define AT_CMD_CHECK_PDP_CONTEXT    "AT+CGDCONT?\r\n"
-
-/* PDP CONTEXT / PACKET DATA */
 #define AT_CMD_SET_PDP_CONTEXT      "AT+CGDCONT=1,\"IP\",\"%s\"\r\n"   // APN
 #define AT_CMD_ATTACH_GPRS          "AT+CGATT=1\r\n"
 #define AT_CMD_DETACH_GPRS          "AT+CGATT=0\r\n"
@@ -98,20 +111,32 @@ typedef enum mqtt_result eMqttResult;
 #define AT_CMD_DEACTIVATE_PDP       "AT+CGACT=0,1\r\n"
 #define AT_CMD_CHECK_PDP_ACTIVE     "AT+CGACT?\r\n"
 #define AT_CMD_GET_IP_ADDR          "AT+CGPADDR=1\r\n"
-#define AT_CMD_MQTT_START           "AT+CMQTTSTART\r\n"
-#define AT_CMD_MQTT_STOP            "AT+CMQTTSTOP\r\n"
 
 /* MQTT */
-#define AT_CMD_MQTT_ACQUIRE          "AT+CMQTTACCQ=%d,\"%s\",%d\r\n"   
-#define AT_CMD_MQTT_RELEASE          "AT+CMQTTREL=%d\r\n"
-#define AT_CMD_MQTT_SSL_CFG          "AT+CMQTTSSLCFG\r\n"
+#define AT_CMD_MQTT_START           "AT+CMQTTSTART\r\n"
+#define AT_CMD_MQTT_STOP            "AT+CMQTTSTOP\r\n"
+#define AT_CMD_MQTT_ACQUIRE         "AT+CMQTTACCQ=%d,\"%s\",%d\r\n"   
+#define AT_CMD_MQTT_RELEASE         "AT+CMQTTREL=%d\r\n"
+#define AT_CMD_MQTT_SSL_CFG         "AT+CMQTTSSLCFG\r\n"
+#define AT_CMD_MQTT_CONNECT         "AT+CMQTTCONNECT=%d,\"%s\",%d,%d,\"%s\",\"%s\"\r\n"
+#define AT_CMD_MQTT_DISCONNECT      "AT+CMQTTDISC=%d,%d\r\n"
+#define AT_CMD_MQTT_TOPIC           "AT+CMQTTTOPIC=%d,%d\r\n"
+#define AT_CMD_MQTT_PAYLOAD         "AT+CMQTTPAYLOAD=%d,%d\r\n"
+#define AT_CMD_MQTT_PUBLISH         "AT+CMQTTPUB=%d,%d,%d\r\n"
 
-#define AT_CMD_MQTT_CONNECT          "AT+CMQTTCONNECT=%d,\"%s\",%d,%d,\"%s\",\"%s\"\r\n"
-#define AT_CMD_MQTT_DISCONNECT       "AT+CMQTTDISC=%d,%d\r\n"
-
-#define AT_CMD_MQTT_TOPIC            "AT+CMQTTTOPIC=%d,%d\r\n"
-#define AT_CMD_MQTT_PAYLOAD          "AT+CMQTTPAYLOAD=%d,%d\r\n"
-#define AT_CMD_MQTT_PUBLISH          "AT+CMQTTPUB=%d,%d,%d\r\n"
+/* HTTP */
+#define AT_CMD_HTTP_START               "AT+HTTPINIT\r\n"          
+#define AT_CMD_HTTP_STOP                "AT+HTTPTERM\r\n"          
+#define AT_CMD_HTTP_SET_URL             "AT+HTTPPARA=\"URL\",\"%s\"\r\n"          
+#define AT_CMD_HTTP_SET_CONN_TIMEOUT    "AT+HTTPPARA=\"CONNECTTO\",%d\r\n"
+#define AT_CMD_HTTP_SET_RECV_TIMEOUT    "AT+HTTPPARA=\"RECVTO\",%d\r\n"
+#define AT_CMD_HTTP_SET_CONTENT         "AT+HTTPPARA=\"CONTENT\",\"%s\"\r\n"
+#define AT_CMD_HTTP_SET_ACCEPT          "AT+HTTPPARA=\"ACCEPT\",\"%s\"\r\n"
+#define AT_CMD_HTTP_SET_SSL             "AT+HTTPPARA=\"SSLCFG\",%d\r\n"
+#define AT_CMD_HTTP_SET_USER_DATA       "AT+HTTPPARA=\"USERDATA\",\"%s\"\r\n"
+#define AT_CMD_HTTP_SET_READ_MODE       "AT+HTTPPARA=\"READMODE\",%d\r\n"
+#define AT_CMD_HTTP_SEND_ACTION         "AT+HTTPACTION=%d\r\n"
+#define AT_CMD_HTTP_INPUT_DATA          "AT+HTTPDATA=%d,%d\r\n"
 
 /******************************************************************************/
 /* Basic AT operations */
@@ -277,5 +302,108 @@ eSimResult mqttSetPayload(int index, char* msg, int len);
  *         WAIT if command send failed or response not ready.
  */
 eSimResult mqttPublish(int index, int QoS, int pub_timeout);
+ 
+/******************************************************************************/
+/* HTTP */
+/******************************************************************************/
+
+/**
+ * @brief Initialize and start HTTP service.
+ * @return PASS if HTTP service started successfully,
+ *         FAIL if initialization failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpStartService(void);
+
+/**
+ * @brief Stop and terminate HTTP service.
+ * @return PASS if HTTP service stopped successfully,
+ *         FAIL if termination failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpStopService(void);
+
+/**
+ * @brief Set target URL for HTTP request.
+ * @param url Pointer to URL string.
+ * @return PASS if URL set successfully,
+ *         FAIL if URL is invalid or rejected,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetUrl(const char* url);
+
+/**
+ * @brief Set Content-Type header for HTTP request.
+ * @param content Pointer to content type string (e.g. "application/json").
+ * @return PASS if content type set successfully,
+ *         FAIL if parameter is invalid,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetContent(const char* content);
+
+/**
+ * @brief Set Accept header for HTTP request.
+ * @param acptType Pointer to accept type string.
+ * @return PASS if accept type set successfully,
+ *         FAIL if parameter is invalid,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetAccept(const char* acptType);
+
+/**
+ * @brief Set connection timeout for HTTP session.
+ * @param timeout Timeout value in seconds.
+ * @return PASS if timeout set successfully,
+ *         FAIL if timeout value is invalid,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetConnectionTimeout(int timeout);
+
+/**
+ * @brief Set data reception timeout for HTTP response.
+ * @param timeout Timeout value in seconds.
+ * @return PASS if reception timeout set successfully,
+ *         FAIL if timeout value is invalid,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetReceptionTimeout(int timeout);
+
+/**
+ * @brief Bind SSL context to HTTP service.
+ * @param ctx_id SSL context identifier.
+ * @return PASS if SSL context set successfully,
+ *         FAIL if context ID is invalid,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetSslContextId(int ctx_id);
+
+/**
+ * @brief Set custom HTTP header.
+ * @param header Pointer to custom header string.
+ * @return PASS if header set successfully,
+ *         FAIL if header is invalid or too long,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSetCustomHeader(const char* header);
+
+/**
+ * @brief Send HTTP action (GET, POST, PUT, etc.).
+ * @param method HTTP method identifier.
+ * @return PASS if action executed successfully,
+ *         FAIL if method is invalid or request failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSendAction(int method);
+
+/**
+ * @brief Send HTTP payload data.
+ * @param data Pointer to data buffer.
+ * @param len Length of data in bytes.
+ * @param time Timeout for data input in seconds.
+ * @return PASS if data sent successfully,
+ *         FAIL if data transmission failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eSimResult httpSendData(char* data, int len, int time);
 
 #endif

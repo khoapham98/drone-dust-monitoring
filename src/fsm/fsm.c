@@ -4,6 +4,7 @@
  */
 #include "sim/sim.h"
 #include "transport/mqtt.h"
+#include "transport/http.h"
 #include "fsm.h"
 
 static fsm_ctx_t ctx = {0};
@@ -20,7 +21,7 @@ void fsmHandler(void)
         switch (ctx.transType)
         {
         case TRANSPORT_HTTP:
-            /* code */
+            httpFsmHandler(ctx.httpState);
             break;
         case TRANSPORT_MQTT:
             mqttFsmHandler(ctx.mqttState);
@@ -60,10 +61,21 @@ eMqttState getMqttState(void)
     return ctx.mqttState;
 }
 
+void setHttpState(eHttpState state)
+{
+    ctx.httpState = state;
+}
+
+eHttpState getHttpState(void)
+{
+    return ctx.httpState;
+}
+
 void fsm_context_init(void)
 {
     ctx.layer = FSM_LAYER_SIM;
-    ctx.transType  = TRANSPORT_MQTT;
-    ctx.simState = SIM_STATE_RESET;
+    ctx.transType = TRANSPORT_HTTP;
+    ctx.simState  = SIM_STATE_RESET;
     ctx.mqttState = MQTT_STATE_RESET;
+    ctx.httpState = HTTP_STATE_PREPARE;
 }

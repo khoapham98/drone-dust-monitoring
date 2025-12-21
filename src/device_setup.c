@@ -16,6 +16,7 @@
 #include "sys/json.h"
 #include "src/sim/at.h"
 #include "transport/mqtt.h"
+#include "transport/http.h"
 #include "transport/transport_config.h"
 #include "fsm/fsm.h"
 
@@ -80,8 +81,12 @@ void* send2WebTask(void* arg)
 	return arg;
 }
 
+extern bool isHttpFsmRunning;
+
 void* dataHandlerTask(void* arg)
 {
+    static int cnt = 0;
+
 	while (1) {
 #if GPS_ENABLE
         sem_wait(&gpsDataReadySem);        
@@ -102,12 +107,21 @@ void* dataHandlerTask(void* arg)
         uint16_t pm25 = pm2_5;
 #endif
 
+        cnt++;
+        if (cnt < 5) {
+            continue;
+        }
+
         pthread_mutex_lock(&jsonLock);
         parseAllDataToJson(&json_ring_buf, lat, lon, pm25);
-        jsonReady = true;
+
+        if (!isHttpFsmRunning)
+            jsonReady = true;
+
         LOG_INF("New JSON data has been pushed");
         pthread_mutex_unlock(&jsonLock);
         pthread_cond_signal(&jsonCond);
+        cnt = 0;
 	}
 
 	return arg;
@@ -151,30 +165,16 @@ static int setupSim(void)
     if (err != 0)
         return err;
 
-    mqttClient client = {
-        .index = FIRST,
-        .ID    = MQTT_CLIENT_ID,
-        .userName = MQTT_USERNAME,
-        .password = MQTT_PASSWORD,
-        .keepAliveTime = MQTT_KEEPALIVE_600S,
-        .cleanSession  = MQTT_PERSIST_SESSION
+    http_ctx_t http = {
+        .url = HTTP_SERVER_URL,
+        .method = POST,
+        .acceptType   = HTTP_ACCEPT_TYPE,
+        .contentType  = HTTP_CONTENT_TYPE,
+        .ConnTimeout  = HTTP_CONNECTION_TIMEOUT_60S,
+        .inputTimeout = HTTP_DATA_INPUT_TIMEOUT_120S
     };
 
-    mqttServer server = {
-        .addr = MQTT_SERVER_ADDR,
-        .type = TCP
-    };
-
-    mqttPubMsg message = {
-        .topic = MQTT_PUB_TOPIC,
-        .topicLength = strlen(message.topic),
-        .qos = MQTT_QOS_1,
-        .publishTimeout = PUBLISH_TIMEOUT_30S
-    };
-
-    mqttClientInit(&client);
-    mqttServerInit(&server);
-    mqttPublishMessageConfig(&message);
+    http_context_init(&http);
 
     err = pthread_create(&thread[2], NULL, send2WebTask, NULL);
     if (err != 0) 
