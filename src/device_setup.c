@@ -44,6 +44,11 @@ bool jsonReady = false;
 pthread_cond_t jsonCond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t jsonLock = PTHREAD_MUTEX_INITIALIZER;
 
+/* web map position and JSON location identifier */
+int row = 0;
+int column = 0;
+char* locationKey = LOCATION_TDTU;
+
 void* updateDustDataTask(void* arg)
 {
 	while (1) {
