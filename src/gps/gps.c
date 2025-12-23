@@ -80,7 +80,7 @@ static double us_columns[US_GRID_COLUMNS][COORD_LIMITS] = {
 };
 
 // TODO: This function has not been tested yet
-void getGridPosition(char** key, int* row, int* col, int lat, int lon)
+void getGridPosition(char** key, int* row, int* col, double lat, double lon)
 {
 	if (lat >= hs_rows[FIRST_IDX][MIN_BOUND] && lat <= hs_rows[HS_LAST_ROW_IDX][MAX_BOUND] &&
 	lon >= hs_columns[FIRST_IDX][MIN_BOUND] && lon <= hs_columns[HS_LAST_COL_IDX][MAX_BOUND]) {

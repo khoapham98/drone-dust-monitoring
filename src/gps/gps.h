@@ -37,7 +37,7 @@
  * @param   lon Input longitude
  * @return  none
  */
-void getGridPosition(char** key, int* row, int* col, int lat, int lon); 
+void getGridPosition(char** key, int* row, int* col, double lat, double lon); 
 
 /**
  * @brief   Parse NMEA to GPS coordinates
