@@ -79,7 +79,6 @@ static double us_columns[US_GRID_COLUMNS][COORD_LIMITS] = {
 	{106.69956908333333, 106.69978800000000}	/* column 23 */
 };
 
-// TODO: This function has not been tested yet
 void getGridPosition(char** key, int* row, int* col, double lat, double lon)
 {
 	if (lat >= hs_rows[FIRST_IDX][MIN_BOUND] && lat <= hs_rows[HS_LAST_ROW_IDX][MAX_BOUND] &&
