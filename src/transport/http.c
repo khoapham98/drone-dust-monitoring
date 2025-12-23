@@ -22,6 +22,7 @@ static const char* httpStateStr[] = {
 
 static http_ctx_t ctx = {0};
 static char data[RING_BUFFER_SIZE] = {0};
+static size_t dataLength = 0;
 bool isHttpFsmRunning = false;
 
 extern ring_buffer_t json_ring_buf;
@@ -69,10 +70,16 @@ end:
 
 static void httpSendStatusHandler(void)
 {
-    eSimResult res = httpSendData(data, strlen(data), ctx.inputTimeout);
-    memset(data, 0, sizeof(data));
-    if (res != PASS)
+    if (dataLength > 45) {
+        LOG_WRN("Invalid JSON payload (%d bytes) - skip", dataLength);
         goto end;
+    }
+
+    eSimResult res = httpSendData(data, dataLength, ctx.inputTimeout);
+
+    memset(data, 0, dataLength);
+
+    if (res != PASS) goto end;
 
     httpSendAction(ctx.method);
 
@@ -108,6 +115,7 @@ void httpFsmHandler(eHttpState state)
             pthread_cond_wait(&jsonCond, &jsonLock);
 
         getJsonData(&json_ring_buf, data);
+        dataLength = strlen(data);
         jsonReady = false;
         pthread_mutex_unlock(&jsonLock);
         isHttpFsmRunning = true;

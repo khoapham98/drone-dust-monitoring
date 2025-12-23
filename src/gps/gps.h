@@ -10,6 +10,35 @@
 #define     LATITUDE_FIELD_NUM      4
 #define     LONGTITUDE_FIELD_NUM    6
 
+#define     LOCATION_TDTU           "us"
+#define     LOCATION_NHT            "hs"
+
+#define     COORD_LIMITS            2  // 0: Min, 1: Max
+#define     HS_GRID_ROWS            7
+#define     HS_GRID_COLUMNS         7
+#define     US_GRID_ROWS            17
+#define     US_GRID_COLUMNS         24
+
+#define     FIRST_IDX               0
+#define     HS_LAST_ROW_IDX         6
+#define     HS_LAST_COL_IDX         6
+#define     US_LAST_ROW_IDX         16
+#define     US_LAST_COL_IDX         23
+
+#define     MIN_BOUND   0
+#define     MAX_BOUND   1
+
+/**
+ * @brief   Map coordinates to grid indices and identify location key
+ * @param   key Address of string pointer to update with location key (e.g., "us", "hs")
+ * @param   row Pointer to store the calculated row index
+ * @param   col Pointer to store the calculated column index
+ * @param   lat Input latitude
+ * @param   lon Input longitude
+ * @return  none
+ */
+void getGridPosition(char** key, int* row, int* col, double lat, double lon); 
+
 /**
  * @brief   Parse NMEA to GPS coordinates
  * @param   buf is NMEA string to parse from
