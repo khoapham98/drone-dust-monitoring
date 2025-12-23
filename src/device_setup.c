@@ -20,6 +20,9 @@
 #include "transport/transport_config.h"
 #include "fsm/fsm.h"
 
+/* external status flag */
+extern bool isHttpFsmRunning;
+
 /* thread array for manage */
 pthread_t thread[MAX_THREADS];
 
@@ -86,8 +89,6 @@ void* send2WebTask(void* arg)
 	return arg;
 }
 
-extern bool isHttpFsmRunning;
-
 void* dataHandlerTask(void* arg)
 {
 	while (1) {
@@ -112,7 +113,10 @@ void* dataHandlerTask(void* arg)
 
         if (!isReadyToUpload()) continue;
         pthread_mutex_lock(&jsonLock);
-        parseAllDataToJson(&json_ring_buf, lat, lon, pm25);
+
+        getGridPosition(&locationKey, &row, &column, lat, lon);
+
+        parseAllDataToJson(&json_ring_buf, locationKey, row, column, pm25);
 
         if (!isHttpFsmRunning)
             jsonReady = true;
