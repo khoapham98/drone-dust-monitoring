@@ -131,7 +131,12 @@ void* dataHandlerTask(void* arg)
 
 static int setupDustSensor(void) 
 {
+#if BBB
     int err = dustSensor_uart_init(UART1_FILE_PATH);    
+#elif RPI
+    int err = dustSensor_uart_init(USB0_FILE_PATH);    
+#endif
+
     if (err != 0)
         return err;
 
@@ -147,7 +152,12 @@ static int setupDustSensor(void)
 
 static int setupGPS(void) 
 {
+#if BBB
     int err = GPS_uart_init(UART2_FILE_PATH);    
+#elif RPI
+    int err = GPS_uart_init(USB1_FILE_PATH);    
+#endif
+
     if (err != 0)
         return err;
 
@@ -163,7 +173,12 @@ static int setupGPS(void)
 
 static int setupSim(void) 
 {
+#if BBB
     int err = sim_uart_init(UART5_FILE_PATH);    
+#elif RPI
+    int err = sim_uart_init(UART0_FILE_PATH);    
+#endif
+
     if (err != 0)
         return err;
 
