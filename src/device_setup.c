@@ -69,9 +69,8 @@ void* updateGPSTask(void* arg)
 {
 	while (1) {
         sem_wait(&gpsDataDoneSem);
-        char gps_buf[NMEA_FRAME] = {0};
-        readGpsData((uint8_t*) gps_buf, NMEA_FRAME);
-        getGpsCoordinates(gps_buf, &latitude, &longitude);
+        gpsReadMavlink();
+        getGpsCoordinates(&latitude, &longitude);
         sem_post(&gpsDataReadySem);
 	}
 

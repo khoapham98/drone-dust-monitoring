@@ -4,13 +4,20 @@
  */
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 #include "sys/log.h"
 #include "src/gps/gps.h"
 #include "src/drivers/uart.h"
+#include "ext/mavlink/c_library_v2/common/mavlink.h"
 
 static int uart_fd = 0;
-static int findSubStr(char* haystack, char* needle);
-static size_t getMessageLen(char* str, size_t len);
+
+static double gps_lat = 0.0;
+static double gps_lon = 0.0;
+static bool gpsValid = false;
+
+static mavlink_message_t mav_msg;
+static mavlink_status_t  mav_status;
 
 /*	NHT - hs */
 static double hs_rows[HS_GRID_ROWS][COORD_LIMITS] = {
@@ -181,46 +188,4 @@ int GPS_uart_init(char* uart_file_path)
     
 	LOG_INF("GPS Initialization successful");
 	return 0;
-}
-
-static size_t getMessageLen(char* str, size_t len)
-{
-	for (size_t i = 0; i + 1 < len; i++) {
-		if (str[i] == '\r' && str[i + 1] == '\n')
-			return i;
-	}
-
-	return 0;
-}
-
-static int findSubStr(char* haystack, char* needle)
-{
-	if (haystack == NULL || needle == NULL) 
-		return -1;
-
-	size_t haystackLen = strlen(haystack);
-	size_t needleLen = strlen(needle);
-
-	if (haystackLen < needleLen)
-		return -1;
-
-	for (size_t i = 0; i < haystackLen; i++) {
-		if (haystack[i] == needle[0]) {
-			bool bothAreSame = true;		
-			for (size_t j = 0; j < needleLen; j++) {
-				if (haystack[i] != needle[j]) {
-					bothAreSame = false;
-					break;	
-				}
-				i++;
-			}
-
-			if (bothAreSame) {
-				return i - needleLen;
-			}
-			i--;
-		}
-	}	
-
-	return -1;
 }

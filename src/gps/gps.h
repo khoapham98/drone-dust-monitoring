@@ -40,21 +40,18 @@
 void getGridPosition(char** key, int* row, int* col, double lat, double lon); 
 
 /**
- * @brief   Parse NMEA to GPS coordinates
- * @param   buf is NMEA string to parse from
- * @param   latitude is latitude address to store data
- * @param   longitude is longitude address to store data
+ * @brief   Get GPS coordinates
+ * @param   lat is latitude address to store data
+ * @param   lon is longitude address to store data
  * @return  none
  */
-void getGpsCoordinates(char* buf, double* latitude, double* longitude);
+void getGpsCoordinates(double* lat, double* lon);
 
 /**
- * @brief   Read GPS data
- * @param   buf is buffer address to store NMEA string
- * @param   len is buffer length
+ * @brief   Read and parse MAVLink messages from GPS
  * @return  none
  */
-void readGpsData(uint8_t* buf, int len);
+void gpsReadMavlink(void);
 
 /**
  * @brief   Initialize the UART interface for GPS communication
