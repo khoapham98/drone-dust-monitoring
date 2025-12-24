@@ -77,13 +77,12 @@ static void httpSendStatusHandler(void)
 
     eSimResult res = httpSendData(data, dataLength, ctx.inputTimeout);
 
-    memset(data, 0, dataLength);
-
     if (res != PASS) goto end;
 
     httpSendAction(ctx.method);
 
 end:
+    memset(data, 0, dataLength);
     setHttpState(HTTP_STATE_STOP);
 }
 
