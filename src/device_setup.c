@@ -25,6 +25,7 @@ extern bool isHttpFsmRunning;
 
 /* thread array for manage */
 pthread_t thread[MAX_THREADS];
+int threadCount = 0;
 
 /* semaphore for dust data and GPS data */
 sem_t dustDataDoneSem;
@@ -142,11 +143,14 @@ static int setupDustSensor(void)
     sem_init(&dustDataReadySem, 0, 0);
     sem_init(&dustDataDoneSem, 0, 1);
 
-    err = pthread_create(&thread[0], NULL, updateDustDataTask, NULL);
-    if (err != 0) 
+    err = pthread_create(&thread[threadCount], NULL, updateDustDataTask, NULL);
+    if (err != 0) {
         LOG_ERR("pthread_create: %d", err);
+        return err;
+    }
 
-    return err;
+    threadCount++;
+    return 0;
 }
 
 static int setupGPS(void) 
@@ -163,11 +167,14 @@ static int setupGPS(void)
     sem_init(&gpsDataReadySem, 0, 0);
     sem_init(&gpsDataDoneSem, 0, 1);
 
-    err = pthread_create(&thread[1], NULL, updateGPSTask, NULL);
-    if (err != 0) 
+    err = pthread_create(&thread[threadCount], NULL, updateGPSTask, NULL);
+    if (err != 0) {
         LOG_ERR("pthread_create: %d", err);
+        return err;
+    }
 
-    return err;
+    threadCount++;
+    return 0;
 }
 
 static int setupSim(void) 
@@ -192,22 +199,27 @@ static int setupSim(void)
 
     http_context_init(&http);
 
-    err = pthread_create(&thread[2], NULL, send2WebTask, NULL);
-    if (err != 0) 
+    err = pthread_create(&thread[threadCount], NULL, send2WebTask, NULL);
+    if (err != 0) {
         LOG_ERR("pthread_create: %d", err);
+        return err;
+    }
 
-    return err;
+    threadCount++;
+    return 0;
 }
 
 static int setupDataHandler(void) 
 {
-    int err = pthread_create(&thread[3], NULL, dataHandlerTask, NULL);
-    if (err != 0) 
+    int err = pthread_create(&thread[threadCount], NULL, dataHandlerTask, NULL);
+    if (err != 0) {
         LOG_ERR("pthread_create: %d", err);
-    else 
-        LOG_INF("Data handler setup successfully");
+        return err;
+    }
 
-    return err;
+    LOG_INF("Data handler setup successfully");
+    threadCount++;
+    return 0;
 }
 
 int deviceSetup(void)
