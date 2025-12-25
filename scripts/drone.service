@@ -1,0 +1,20 @@
+[Unit]
+Description=Drone Dust Mapping Data Collector
+
+# Stop restarting the service if it exceeds 5 restarts within 300 seconds (5 minutes).
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/bbb/
+ExecStart=/home/ubuntu/bbb/build/bin/app
+
+Restart=always
+RestartSec=5s
+
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
