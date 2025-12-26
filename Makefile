@@ -7,6 +7,7 @@ LDFLAGS = -pthread
 SRC_DIRS = src sys
 OBJ_DIR = build/obj
 BIN_DIR = build/bin
+SERVICE = scripts/setup_service.sh
 
 SRCS = $(shell find src sys -name '*.c')
 OBJS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(SRCS))
@@ -23,12 +24,15 @@ $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
-
 run:
 	./$(TARGET)
 
+install-service: all
+	./$(SERVICE)
+
+clean:
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+
 -include $(DEPS)
 
-.PHONY: all clean run
+.PHONY: all clean run install-service
