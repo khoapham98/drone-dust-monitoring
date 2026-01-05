@@ -107,7 +107,7 @@ void* dataHandlerTask(void* arg)
         float aqi = ctx.aqi;
         sem_post(&dustDataDoneSem);
 #else
-        uint16_t api = 0;
+        float aqi = 0;
 #endif
 
         if (!isReadyToUpload()) continue;
