@@ -26,7 +26,7 @@ echo "[3/5] Copying service file to system: DONE"
 
 sudo systemctl daemon-reload
 # enable auto-boot
-# sudo systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
+sudo systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
 echo "[4/5] Systemd reload: DONE"
 
 sudo systemctl reset-failed "$SERVICE_NAME"
