@@ -59,6 +59,7 @@ void* updateDustDataTask(void* arg)
         sem_wait(&dustDataDoneSem);
         getPm25(&ctx.pm25);
         pm25ToAqi(&ctx);
+        LOG_INF("PM2.5 = %d - AQI: %f", ctx.pm25, ctx.aqi);
         sem_post(&dustDataReadySem);
 	}
 
@@ -71,6 +72,7 @@ void* updateGPSTask(void* arg)
         sem_wait(&gpsDataDoneSem);
         gpsReadMavlink();
         getGpsCoordinates(&latitude, &longitude);
+        LOG_INF("latitude: %f - longitude: %f", latitude, longitude);
         sem_post(&gpsDataReadySem);
         sleep(1);
 	}
