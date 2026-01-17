@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "sys/log.h"
 #include "src/gps/gps.h"
 #include "src/drivers/uart.h"
@@ -18,6 +20,9 @@ static bool gpsValid = false;
 
 static mavlink_message_t mav_msg;
 static mavlink_status_t  mav_status;
+
+// Debug flag - set to 1 to log all message IDs
+#define GPS_DEBUG_MSG_IDS 0
 
 /*	NHT - hs */
 static double hs_rows[HS_GRID_ROWS][COORD_LIMITS] = {
@@ -135,18 +140,40 @@ static void gpsHandleMavlinkMsg(mavlink_message_t *msg)
 {
     switch (msg->msgid)
     {
+        case MAVLINK_MSG_ID_GPS_RAW_INT:
+        {
+            mavlink_gps_raw_int_t gps_raw;
+            mavlink_msg_gps_raw_int_decode(msg, &gps_raw);
+
+            if (gps_raw.fix_type >= 2) {
+                gps_lat = (double) gps_raw.lat / 1e7;
+                gps_lon = (double) gps_raw.lon / 1e7;
+                gpsValid = true;
+                LOG_INF("GPS_RAW_INT: lat: %.7f - lon: %.7f - fix_type: %d - sats: %d", 
+                        gps_lat, gps_lon, gps_raw.fix_type, gps_raw.satellites_visible);
+            } else {
+                LOG_WRN("GPS_RAW_INT: No fix (fix_type: %d, sats: %d)", 
+                        gps_raw.fix_type, gps_raw.satellites_visible);
+            }
+            break;
+        }
+
         case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
         {
             mavlink_global_position_int_t pos;
             mavlink_msg_global_position_int_decode(msg, &pos);
 
-            gps_lat = pos.lat / 1e7;
-            gps_lon = pos.lon / 1e7;
-			gpsValid = true;
+            gps_lat = (double) pos.lat / 1e7;
+            gps_lon = (double) pos.lon / 1e7;
+            gpsValid = true;
+            LOG_INF("GLOBAL_POSITION_INT: lat: %.7f - lon: %.7f", gps_lat, gps_lon);
             break;
         }
 
         default:
+#if GPS_DEBUG_MSG_IDS
+            LOG_INF("Received MAVLink message ID: %d", msg->msgid);
+#endif
             break;
     }
 }
@@ -155,33 +182,58 @@ void gpsReadMavlink(void)
 {
     uint8_t byte;
     int ret;
+    int bytes_read = 0;
+    int messages_received = 0;
 
-    while (1)
-    {
+    for (int i = 0; i < 512; i++) {
         ret = read(uart_fd, &byte, 1);
-        if (ret <= 0)
-            break;
 
-        if (mavlink_parse_char(MAVLINK_COMM_0, byte, &mav_msg, &mav_status))
-        {
-            gpsHandleMavlinkMsg(&mav_msg);
+        if (ret == 1) {
+            bytes_read++;
+            if (mavlink_parse_char(MAVLINK_COMM_0, byte, &mav_msg, &mav_status)) {
+                messages_received++;
+                gpsHandleMavlinkMsg(&mav_msg);
+            }
+        } else {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                break;   
+            } else if (errno != 0) {
+                LOG_ERR("UART read error: %s (errno: %d)", strerror(errno), errno);
+                break;
+            } else {
+                break;
+            }
         }
     }
+
+#if GPS_DEBUG_MSG_IDS
+    if (bytes_read > 0)
+        LOG_INF("Read %d bytes, received %d MAVLink messages", bytes_read, messages_received);
+    else if (bytes_read > 0 && messages_received == 0) 
+        LOG_WRN("Read %d bytes but no complete MAVLink message received", bytes_read);
+#endif
 }
 
 void getGpsCoordinates(double* lat, double* lon)
 {
-	if (lat == NULL || lon == NULL || !gpsValid) 
+	if (lat == NULL || lon == NULL) {
+        LOG_ERR("getGpsCoordinates: NULL pointer parameter");
 		return;
+    }
 
-	*lat = gps_lat;
-	*lon = gps_lon;
-	gpsValid = false;
+	if (!gpsValid) {
+		LOG_WRN("GPS not valid - using previous coordinates");
+        return;
+	}
+
+    *lat = gps_lat;
+    *lon = gps_lon;
+    gpsValid = false;
 }
 
 int GPS_uart_init(char* uart_file_path)
 {
-	uart_fd = uart_init(uart_file_path, B57600, false);
+	uart_fd = uart_init(uart_file_path, B57600, true);
     if (uart_fd < 0) {
         return -1;
 	}
