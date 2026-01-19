@@ -145,16 +145,18 @@ static void gpsHandleMavlinkMsg(mavlink_message_t *msg)
             mavlink_gps_raw_int_t gps_raw;
             mavlink_msg_gps_raw_int_decode(msg, &gps_raw);
 
-            if (gps_raw.fix_type >= 2) {
-                gps_lat = (double) gps_raw.lat / 1e7;
-                gps_lon = (double) gps_raw.lon / 1e7;
+            if (gps_raw.fix_type >= 2 && gps_raw.satellites_visible >= 5) {
                 gpsValid = true;
-                LOG_INF("GPS_RAW_INT: lat: %.7f - lon: %.7f - fix_type: %d - sats: %d", 
-                        gps_lat, gps_lon, gps_raw.fix_type, gps_raw.satellites_visible);
-            } else {
-                LOG_WRN("GPS_RAW_INT: No fix (fix_type: %d, sats: %d)", 
+                LOG_INF("GPS_RAW_INT: Valid GPS (fix_type: %d, sats: %d)", 
+                        gps_raw.fix_type, gps_raw.satellites_visible);
+            } 
+            
+            if (gps_raw.fix_type < 2 || gps_raw.satellites_visible < 4) {
+                gpsValid = false;
+                LOG_WRN("GPS_RAW_INT: Invalid GPS (fix_type: %d, sats: %d)", 
                         gps_raw.fix_type, gps_raw.satellites_visible);
             }
+
             break;
         }
 
@@ -163,10 +165,12 @@ static void gpsHandleMavlinkMsg(mavlink_message_t *msg)
             mavlink_global_position_int_t pos;
             mavlink_msg_global_position_int_decode(msg, &pos);
 
-            gps_lat = (double) pos.lat / 1e7;
-            gps_lon = (double) pos.lon / 1e7;
-            gpsValid = true;
-            LOG_INF("GLOBAL_POSITION_INT: lat: %.7f - lon: %.7f", gps_lat, gps_lon);
+            if (gpsValid) {
+                gps_lat = (double) pos.lat / 1e7;
+                gps_lon = (double) pos.lon / 1e7;
+                LOG_INF("GLOBAL_POSITION_INT: lat: %.7f - lon: %.7f", gps_lat, gps_lon);
+            }
+
             break;
         }
 
@@ -221,14 +225,11 @@ void getGpsCoordinates(double* lat, double* lon)
 		return;
     }
 
-	if (!gpsValid) {
-		LOG_WRN("GPS not valid - using previous coordinates");
+	if (!gpsValid)
         return;
-	}
 
     *lat = gps_lat;
     *lon = gps_lon;
-    gpsValid = false;
 }
 
 int GPS_uart_init(char* uart_file_path)
