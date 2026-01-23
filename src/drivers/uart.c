@@ -32,6 +32,7 @@ int uart_init(char* UART_PATH, speed_t BR, bool nonBlock)
 		return -1;
 	}
 
+	tcflush(uart_fd, TCIOFLUSH);
 	struct termios uart;
 	tcgetattr(uart_fd, &uart);
 	cfmakeraw(&uart);
