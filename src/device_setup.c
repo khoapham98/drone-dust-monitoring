@@ -35,11 +35,10 @@ sem_t gpsDataReadySem;
 sem_t jsonDataReadySem;
 
 /* dust data */
-pm25_aqi_ctx_t ctx = {0};
+extern pm25_aqi_ctx_t dust;
 
 /* GPS data */
-double latitude  = DEFAULT_LATITUDE;
-double longitude = DEFAULT_LONGITUDE;
+extern gps_ctx_t gps;
 
 /* json ring buffer */
 ring_buffer_t json_ring_buf;
@@ -57,9 +56,7 @@ void* updateDustDataTask(void* arg)
 {
 	while (1) {
         sem_wait(&dustDataDoneSem);
-        getPm25(&ctx.pm25);
-        pm25ToAqi(&ctx);
-        LOG_INF("PM2.5 = %d - AQI: %f", ctx.pm25, ctx.aqi);
+        getDustData();
         sem_post(&dustDataReadySem);
 	}
 
@@ -71,7 +68,6 @@ void* updateGPSTask(void* arg)
 	while (1) {
         sem_wait(&gpsDataDoneSem);
         gpsReadMavlink();
-        getGpsCoordinates(&latitude, &longitude);
         sem_post(&gpsDataReadySem);
         sleep(1);
 	}
@@ -95,33 +91,33 @@ void* dataHandlerTask(void* arg)
 	while (1) {
 #if GPS_ENABLE
         sem_wait(&gpsDataReadySem);        
-        double lat = latitude;
-        double lon = longitude;
+        double lat = gps.lat;
+        double lon = gps.lon;
+        double alt = gps.alt;
         sem_post(&gpsDataDoneSem);
 #else
         sleep(1);
-        double lat = latitude;
-        double lon = longitude;
+        double lat = DEFAULT_LATITUDE;
+        double lon = DEFAULT_LONGITUDE;
+        double alt = DEFAULT_ALTITUDE;
 #endif
 
 #if DUST_SENSOR_ENABLE
         sem_wait(&dustDataReadySem);        
-        float aqi = ctx.aqi;
+        float aqi = dust.aqi;
+        uint32_t pm25 = dust.pm25;
         sem_post(&dustDataDoneSem);
 #else
         float aqi = 0;
+        float pm25 = 0;
 #endif
 
-        if (!isReadyToUpload()) continue;
+        if (!isReadyToUpload())
+            continue;
+
         pthread_mutex_lock(&jsonLock);
-
-        getGridPosition(&locationKey, &row, &column, lat, lon);
-
-        parseAllDataToJson(&json_ring_buf, locationKey, row, column, aqi);
-
-        if (!isHttpFsmRunning)
-            jsonReady = true;
-
+        parseAllDataToJson(&json_ring_buf, lat, lon, alt, pm25, aqi);
+        jsonReady = true;
         LOG_INF("New JSON data has been pushed");
         pthread_mutex_unlock(&jsonLock);
         pthread_cond_signal(&jsonCond);
@@ -189,16 +185,30 @@ static int setupSim(void)
     if (err != 0)
         return err;
 
-    http_ctx_t http = {
-        .url = HTTP_SERVER_URL,
-        .method = POST,
-        .acceptType   = HTTP_ACCEPT_TYPE,
-        .contentType  = HTTP_CONTENT_TYPE,
-        .ConnTimeout  = HTTP_CONNECTION_TIMEOUT_60S,
-        .inputTimeout = HTTP_DATA_INPUT_TIMEOUT_120S
+    mqttClient client = {
+        .index = FIRST,
+        .ID    = MQTT_CLIENT_ID,
+        .userName = MQTT_USERNAME,
+        .password = MQTT_PASSWORD,
+        .keepAliveTime = MQTT_KEEPALIVE_600S,
+        .cleanSession  = MQTT_PERSIST_SESSION
     };
 
-    http_context_init(&http);
+    mqttServer server = {
+        .addr = MQTT_SERVER_ADDR,
+        .type = TCP
+    };
+
+    mqttPubMsg message = {
+        .topic = MQTT_PUB_TOPIC,
+        .topicLength = strlen(message.topic),
+        .qos = MQTT_QOS_1,
+        .publishTimeout = PUBLISH_TIMEOUT_30S
+    };
+
+    mqttClientInit(&client);
+    mqttServerInit(&server);
+    mqttPublishMessageConfig(&message);
 
     err = pthread_create(&thread[threadCount], NULL, send2WebTask, NULL);
     if (err != 0) {

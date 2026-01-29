@@ -74,7 +74,7 @@ eHttpState getHttpState(void)
 void fsm_context_init(void)
 {
     ctx.layer = FSM_LAYER_SIM;
-    ctx.transType = TRANSPORT_HTTP;
+    ctx.transType = TRANSPORT_MQTT;
     ctx.simState  = SIM_STATE_RESET;
     ctx.mqttState = MQTT_STATE_RESET;
     ctx.httpState = HTTP_STATE_PREPARE;

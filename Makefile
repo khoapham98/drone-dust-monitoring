@@ -28,6 +28,8 @@ run:
 	./$(TARGET)
 
 install-service: all
+	sudo chmod +x ./$(SERVICE)
+	sed -i 's/\r$$//' ./$(SERVICE)
 	./$(SERVICE)
 
 clean:

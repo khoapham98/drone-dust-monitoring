@@ -13,6 +13,9 @@
 #include "src/drivers/uart.h"
 
 static int uart_fd = 0;
+
+pm25_aqi_ctx_t dust = {0};
+
 static const int aqiRanges[AQI_LEVEL_COUNT][2] = {
     {0, 50}, 
     {51, 100},
@@ -41,45 +44,28 @@ static eAqiLevel getPm25AqiLevel(uint16_t pm25)
     return AQI_HAZARDOUS;
 }
 
-void pm25ToAqi(pm25_aqi_ctx_t* ctx)
+static void pm25ToAqi(void)
 {
-    eAqiLevel level = getPm25AqiLevel(ctx->pm25);
+    eAqiLevel level = getPm25AqiLevel(dust.pm25);
 
-    ctx->iLow  = aqiRanges[level][0];
-    ctx->iHigh = aqiRanges[level][1];
-    ctx->cLow  = pm25Ranges[level][0];
-    ctx->cHigh = pm25Ranges[level][1];
+    dust.iLow  = aqiRanges[level][0];
+    dust.iHigh = aqiRanges[level][1];
+    dust.cLow  = pm25Ranges[level][0];
+    dust.cHigh = pm25Ranges[level][1];
 
-    if (ctx->cHigh == ctx->cLow) {
+    if (dust.cHigh == dust.cLow) {
         LOG_ERR("Invalid PM2.5 breakpoint - keep previous data");
         return;
     }
 
-    float rangeAqi = (float) (ctx->iHigh - ctx->iLow);
-    float rangeConcentration = (float) (ctx->cHigh - ctx->cLow);
-    float concentrationDiff  = (float) (ctx->pm25 - ctx->cLow);
+    float rangeAqi = (float) (dust.iHigh - dust.iLow);
+    float rangeConcentration = (float) (dust.cHigh - dust.cLow);
+    float concentrationDiff  = (float) (dust.pm25 - dust.cLow);
 
-    ctx->aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) ctx->iLow;
+    dust.aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) dust.iLow;
 }
 
-void getPm25(uint16_t* pm25)
-{
-    uint8_t dust_buf[DUST_DATA_FRAME] = {0};
-    readDustData(dust_buf, sizeof(dust_buf));
-
-	*pm25 = dust_buf[12] << 8 | dust_buf[13]; 
-}
-
-void checkDustData(uint8_t* buf)
-{
-	const char* str[2] = {"FAILED", "OK"};
-	LOG_INF("Start character 1: 0x%02X [%s]\n", buf[0], str[buf[0] == 0x42]);
-	LOG_INF("Start character 2: 0x%02X [%s]\n", buf[1], str[buf[1] == 0x4d]);
-	int frame_len = buf[2] << 8 | buf[3];
-	LOG_INF("Frame length: %d bytes [%s]\n", frame_len, str[frame_len == 28]);
-}
-
-void readDustData(uint8_t* buf, int len)
+static void readDustData(uint8_t* buf, int len)
 {
     if (len < DUST_DATA_FRAME) 
         LOG_WRN("dust_sensor: May not receive data fully");
@@ -94,6 +80,18 @@ void readDustData(uint8_t* buf, int len)
             break;
         }
     }
+}
+
+void getDustData(void)
+{
+    uint8_t dust_buf[DUST_DATA_FRAME] = {0};
+    readDustData(dust_buf, sizeof(dust_buf));
+
+    dust.pm25 = (dust_buf[12] << 8) | dust_buf[13]; 
+ 
+    pm25ToAqi();
+
+    LOG_INF("PM2.5 = %d - AQI: %f", dust.pm25, dust.aqi);
 }
 
 int dustSensor_uart_init(char* uart_file_path)

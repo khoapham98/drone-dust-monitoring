@@ -23,6 +23,6 @@ void getJsonData(ring_buffer_t* rb, char* buf);
  * @param   aqi Air quality index
  * @return  none
  */
-void parseAllDataToJson(ring_buffer_t* rb, char* key, int row, int col, float aqi);
+void parseAllDataToJson(ring_buffer_t* rb, float lat, float lng, float alt, uint32_t pm25, float aqi);
 
 #endif

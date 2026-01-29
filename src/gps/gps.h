@@ -6,6 +6,13 @@
 #define _GPS_H_
 #include <stdint.h>
 
+/* Default latitude and longitude values.
+ * Here set to the coordinates of Ton Duc Thang University (TDTU), Ho Chi Minh City. 
+ */
+#define     DEFAULT_LATITUDE        10.7318f 
+#define     DEFAULT_LONGITUDE       106.6981f
+#define     DEFAULT_ALTITUDE        10
+
 #define     NMEA_FRAME              1024 
 #define     LATITUDE_FIELD_NUM      4
 #define     LONGTITUDE_FIELD_NUM    6
@@ -28,16 +35,11 @@
 #define     MIN_BOUND   0
 #define     MAX_BOUND   1
 
-/**
- * @brief   Map coordinates to grid indices and identify location key
- * @param   key Address of string pointer to update with location key (e.g., "us", "hs")
- * @param   row Pointer to store the calculated row index
- * @param   col Pointer to store the calculated column index
- * @param   lat Input latitude
- * @param   lon Input longitude
- * @return  none
- */
-void getGridPosition(char** key, int* row, int* col, double lat, double lon); 
+typedef struct {
+    double lat;
+    double lon;
+    double alt;
+} gps_ctx_t;
 
 /**
  * @brief   Get GPS coordinates
@@ -45,7 +47,7 @@ void getGridPosition(char** key, int* row, int* col, double lat, double lon);
  * @param   lon is longitude address to store data
  * @return  none
  */
-void getGpsCoordinates(double* lat, double* lon);
+void getGpsCoordinates(gps_ctx_t* ctx);
 
 /**
  * @brief   Read and parse MAVLink messages from GPS
