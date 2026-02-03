@@ -14,6 +14,7 @@
 #include "driver/gptimer.h"
 #include "../boards/board.h"
 #include "dust_sensor.h"
+#include "common/mavlink.h"
 
 /* message buffer */
 static MessageBufferHandle_t msgBuffer;
