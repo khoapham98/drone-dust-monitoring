@@ -1,0 +1,9 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "device_setup.c"
+        "dust_sensor/dust_sensor.c"
+    INCLUDE_DIRS 
+        "."
+        "dust_sensor"
+    )
