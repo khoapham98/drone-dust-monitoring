@@ -3,7 +3,10 @@ idf_component_register(
         "main.c"
         "device_setup.c"
         "dust_sensor/dust_sensor.c"
+        "gps/gps.c"
     INCLUDE_DIRS 
         "."
+        "../boards"
         "dust_sensor"
+        "gps"
     )
