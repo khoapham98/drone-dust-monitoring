@@ -2,6 +2,8 @@
  * @file    gps.c
  * @brief   ATGM336H driver source file
  */
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>

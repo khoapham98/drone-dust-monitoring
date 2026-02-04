@@ -2,6 +2,8 @@
  * @file    dust_sensor.c
  * @brief   PMS7003 driver source file
  */
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -121,7 +123,7 @@ static bool checkHeaderBytes(uint8_t* buf)
     if (buf[0] == START_CHARACTER_1 && buf[1] == START_CHARACTER_2)
         return true;
     
-    ESP_LOGD(TAG, "Header bytes: %02X %02X", buf[0], buf[1]);
+    ESP_LOGD(TAG, "Invalid header bytes: %02X %02X", buf[0], buf[1]);
     return false;
 }
 

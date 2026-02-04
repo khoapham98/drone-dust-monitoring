@@ -2,6 +2,8 @@
  * @file    device_setup.c
  * @brief   setup device source file
  */
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -23,7 +25,7 @@ void dustUpdateTask(void *pvParameters)
 {
 	while (1) {
         if (getDustData()) {
-            ESP_LOGI(TAG, "Dust data received: PM2.5: %d - AQI: %.2f",
+            ESP_LOGD(TAG, "Dust data received: PM2.5: %d - AQI: %.2f",
                     ctx.pm25, ctx.aqi);
         }
 	}
@@ -33,7 +35,7 @@ void gpsUpdateTask(void *pvParameters)
 {
 	while (1) {
         if (getGpsData()) {
-            ESP_LOGI(TAG, "GPS data received: lat: %.7f - lon: %.7f - alt: %.2f m",
+            ESP_LOGD(TAG, "GPS data received: lat: %.7f - lon: %.7f - alt: %.2f m",
                     gps.lat, gps.lon, gps.alt);
         }
 	}
