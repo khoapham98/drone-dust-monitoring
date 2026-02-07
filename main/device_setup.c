@@ -12,6 +12,8 @@
 #include "device_setup.h"
 #include "dust_sensor.h"
 #include "gps.h"
+#include "at.h"
+#include "fsm.h"
 
 static const char* TAG = "device_setup";
 
@@ -20,6 +22,16 @@ extern pm25_aqi_ctx_t ctx;
 
 /* gps */
 extern gps_ctx_t gps;
+
+void simManagerTask(void *pvParameters)
+{
+    ESP_LOGI(TAG, "Enter sim task");
+    fsm_context_init();
+
+	while (1) {
+        fsmHandler();
+	}
+}
 
 void dustUpdateTask(void *pvParameters)
 {
@@ -39,6 +51,22 @@ void gpsUpdateTask(void *pvParameters)
                     gps.lat, gps.lon, gps.alt);
         }
 	}
+}
+
+static int setupSim(void) 
+{
+    sim_uart_init();    
+
+    TaskHandle_t simTaskHandle;
+    BaseType_t ret = xTaskCreate(simManagerTask, "sim manager task", 4096, NULL, 0, &simTaskHandle);	
+
+    if (ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create Sim task!");
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "Sim task created");
+    return 0;
 }
 
 static int setupDustSensor(void) 
@@ -76,6 +104,12 @@ static int setupGPS(void)
 int deviceSetup(void)
 {
     int err = 0;
+
+#if SIM_ENALBE
+    err = setupSim();
+    if (err != 0)
+        ESP_LOGE(TAG, "Failed to setup sim");
+#endif 
 
 #if DUST_SENSOR_ENABLE
     err = setupDustSensor();

@@ -4,9 +4,15 @@ idf_component_register(
         "device_setup.c"
         "dust_sensor/dust_sensor.c"
         "gps/gps.c"
+        "sim/at.c"
+        "sim/sim_cmd.c"
+        "sim/sim.c"
+        "fsm/fsm.c"
     INCLUDE_DIRS 
         "."
         "../boards"
         "dust_sensor"
         "gps"
+        "sim"
+        "fsm"
     )
