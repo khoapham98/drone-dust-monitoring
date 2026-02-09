@@ -162,6 +162,16 @@ void parseRmtToUart(uint8_t* recv_buf)
     }
 }
 
+static void readPmValues(uint8_t* buf)
+{
+    dust.pm1_0 = (buf[10] << 8) | buf[11];
+    dust.pm2_5 = (buf[12] << 8) | buf[13]; 
+    dust.pm10  = (buf[14] << 8) | buf[15];
+
+    ESP_LOGI(TAG, "PM1.0 = %u - PM2.5 = %u - PM10 = %u - AQI: %.3f",
+            dust.pm1_0, dust.pm2_5, dust.pm10, dust.aqi);
+}
+
 bool getDustData(void)
 {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
