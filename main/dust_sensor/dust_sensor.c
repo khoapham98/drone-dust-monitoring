@@ -56,7 +56,7 @@ static const rmt_rx_event_callbacks_t rmt_rx_cb = {
 };
 
 /* dust data */
-pm25_aqi_ctx_t ctx = {0};
+dust_ctx_t dust = {0};
 
 static const int aqiRanges[AQI_LEVEL_COUNT][2] = {
     {0, 50}, 
@@ -86,25 +86,27 @@ static eAqiLevel getPm25AqiLevel(uint16_t pm25)
     return AQI_HAZARDOUS;
 }
 
-static void pm25ToAqi(void)
+static void pm2_5ToAqi(void)
 {
-    eAqiLevel level = getPm25AqiLevel(ctx.pm25);
+    eAqiLevel level = getPm25AqiLevel(dust.pm2_5);
 
-    ctx.iLow  = aqiRanges[level][0];
-    ctx.iHigh = aqiRanges[level][1];
-    ctx.cLow  = pm25Ranges[level][0];
-    ctx.cHigh = pm25Ranges[level][1];
+    aqi_calc_t aqi = {
+        .iLow  = aqiRanges[level][0],
+        .iHigh = aqiRanges[level][1],
+        .cLow  = pm25Ranges[level][0],
+        .cHigh = pm25Ranges[level][1]
+    };
 
-    if (ctx.cHigh == ctx.cLow) {
+    if (aqi.cHigh == aqi.cLow) {
         ESP_LOGE(TAG, "Invalid PM2.5 breakpoint - keep previous data");
         return;
     }
 
-    float rangeAqi = (float) (ctx.iHigh - ctx.iLow);
-    float rangeConcentration = (float) (ctx.cHigh - ctx.cLow);
-    float concentrationDiff  = (float) (ctx.pm25 - ctx.cLow);
+    float rangeAqi = (float) (aqi.iHigh - aqi.iLow);
+    float rangeConcentration = (float) (aqi.cHigh - aqi.cLow);
+    float concentrationDiff  = (float) (dust.pm2_5 - aqi.cLow);
 
-    ctx.aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) ctx.iLow;
+    dust.aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) aqi.iLow;
 }
 
 static bool checkHeaderBytes(uint8_t* buf)
