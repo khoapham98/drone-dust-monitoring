@@ -114,7 +114,7 @@ static bool checkHeaderBytes(uint8_t* buf)
     if (buf[0] == START_CHARACTER_1 && buf[1] == START_CHARACTER_2)
         return true;
     
-    ESP_LOGD(TAG, "Invalid header bytes: %02X %02X", buf[0], buf[1]);
+    ESP_LOGD(TAG, "Invalid header bytes: 0x%02X 0x%02X", buf[0], buf[1]);
     return false;
 }
 
@@ -176,15 +176,24 @@ bool getDustData(void)
 {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    ESP_LOGI(TAG, "data received - total symbols: %zu", totalSymbols);
+    ESP_LOGD(TAG, "data received - total symbols: %zu", totalSymbols);
 
-    // rmtPrint(rmt_buf, totalSymbols);
+    uint8_t dust_buf[DUST_DATA_FRAME] = {0};
 
-    esp_err_t ret = rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
-    if (ret != ESP_OK) 
-        ESP_LOGE(TAG, "Start RMT RX failed (0x%3X)", ret);
+    parseRmtToUart(dust_buf);
 
-    return true;
+    bool ret = checkHeaderBytes(dust_buf);
+    if (ret == false)
+        goto start_rmt_rx;
+
+    readPmValues(dust_buf);
+
+    pm2_5ToAqi();
+
+start_rmt_rx:
+    rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
+
+    return ret;
 }
 
 static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx)
