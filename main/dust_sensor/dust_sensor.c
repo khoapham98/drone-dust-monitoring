@@ -8,15 +8,14 @@
 #include <stdbool.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/ringbuf.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
-#include "driver/rmt.h"
+#include "driver/rmt_rx.h"
 #include "board.h"
 #include "dust_sensor.h"
 
-/* ring buffer */
-static RingbufHandle_t rbHandle;
+extern TaskHandle_t dustTaskHandle;
 
 /* logger */
 static const char* TAG = "dust_sensor";
@@ -31,18 +30,29 @@ static const gpio_config_t gpio_cfg = {
 };
 
 /* rmt */
-static const rmt_config_t rmt_cfg = {
-    .rmt_mode = RMT_MODE_RX,
-    .channel  = RMT_CHANNEL_0,
-    .gpio_num = UART_SW_RX_PIN, 
-    .clk_div  = RMT_DEFAULT_CLK_DIV,
-    .mem_block_num = 2, 
+static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx);
 
-    .rx_config = {
-        .filter_en = true,
-        .idle_threshold = 3000,
-        .filter_ticks_thresh = 10
-    }
+static rmt_channel_handle_t rmt_rx_channel;
+
+static rmt_symbol_word_t rmt_buf[128] = {0};
+
+static volatile size_t totalSymbols = 0;
+
+static const rmt_rx_channel_config_t rmt_rx_cfg = {
+    .gpio_num = UART_SW_RX_PIN,         
+    .clk_src  = RMT_CLK_SRC_DEFAULT,    // 80MHz
+    .intr_priority = 0,
+    .resolution_hz = 1000000,           // 1MHz ~ 1us
+    .mem_block_symbols = 128            // 128 RMT items ~ 512 bytes
+};
+
+static const rmt_receive_config_t rmt_recv_cfg = {
+    .signal_range_min_ns = 3000,        // 3us
+    .signal_range_max_ns = 30000000     // 30ms
+};
+
+static const rmt_rx_event_callbacks_t rmt_rx_cb = {
+    .on_recv_done = rmt_rx_done_callback
 };
 
 /* dust data */
@@ -106,7 +116,7 @@ static bool checkHeaderBytes(uint8_t* buf)
     return false;
 }
 
-void rmtParser(rmt_item32_t* rmt_buf, uint8_t* recv_buf, size_t totalItems) 
+void rmtPrint(rmt_symbol_word_t* rmt_buf, size_t totalItems) 
 {
     for (int i = 0; i < totalItems; i++) {
         ESP_LOGI(TAG, "rmt_buf[%d]:\n \
@@ -121,24 +131,28 @@ void rmtParser(rmt_item32_t* rmt_buf, uint8_t* recv_buf, size_t totalItems)
 
 bool getDustData(void)
 {
-    size_t totalBytes = 0;
-    rmt_item32_t* pItemBuffer = (rmt_item32_t*) xRingbufferReceive(rbHandle, &totalBytes, portMAX_DELAY);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    if (totalBytes <= 0 || pItemBuffer == NULL) {
-        ESP_LOGE(TAG, "No item found");
-        return false;
-    }
+    ESP_LOGI(TAG, "data received - total symbols: %zu", totalSymbols);
 
-    uint8_t dustBuffer[DUST_DATA_FRAME] = {0};
-    size_t totalItems = totalBytes / sizeof(rmt_item32_t);
+    // rmtPrint(rmt_buf, totalSymbols);
 
-    // rmtParser(pItemBuffer, dustBuffer, totalItems);
-
-    ESP_LOGI(TAG, "data received - total items: %d", totalItems);
-
-    vRingbufferReturnItem(rbHandle, pItemBuffer);
+    esp_err_t ret = rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
+    if (ret != ESP_OK) 
+        ESP_LOGE(TAG, "Start RMT RX failed (0x%3X)", ret);
 
     return true;
+}
+
+static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx)
+{
+    BaseType_t ret = pdFALSE;
+
+    totalSymbols = edata->num_symbols;
+
+    vTaskNotifyGiveFromISR(dustTaskHandle, &ret);
+
+    return ret;
 }
 
 int dust_sensor_sw_uart_init(void)
@@ -149,27 +163,27 @@ int dust_sensor_sw_uart_init(void)
         return -1;
     }
 
-    ret = rmt_config(&rmt_cfg);
+    ret = rmt_new_rx_channel(&rmt_rx_cfg, &rmt_rx_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "RMT parameters configuration failed");
+        ESP_LOGE(TAG, "Create RMT RX channel failed");
         return -1;
     }
 
-    ret = rmt_driver_install(rmt_cfg.channel, 1024, 0);
+    ret = rmt_rx_register_event_callbacks(rmt_rx_channel, &rmt_rx_cb, NULL);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "RMT driver install failed");
+        ESP_LOGE(TAG, "RMT RX channel set callback failed");
         return -1;
     }
 
-    ret = rmt_get_ringbuf_handle(rmt_cfg.channel, &rbHandle);
+    ret = rmt_enable(rmt_rx_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "RMT ringbuffer handle get failed");
+        ESP_LOGE(TAG, "Enable RMT RX channel failed");
         return -1;
     }
 
-    ret = rmt_rx_start(rmt_cfg.channel, true);
+    ret = rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "RMT RX start failed");
+        ESP_LOGE(TAG, "Init RMT RX channel failed (0x%3X)", ret);
         return -1;
     }
 
