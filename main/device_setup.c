@@ -17,7 +17,7 @@ static const char* TAG = "device_setup";
 
 /* dust */
 TaskHandle_t dustTaskHandle;
-extern pm25_aqi_ctx_t ctx;
+extern dust_ctx_t dust;
 
 /* gps */
 TaskHandle_t gpsTaskHandle;
@@ -28,7 +28,7 @@ void dustUpdateTask(void *pvParameters)
 	while (1) {
         if (getDustData()) {
             ESP_LOGD(TAG, "Dust data received: PM2.5: %d - AQI: %.2f",
-                    ctx.pm25, ctx.aqi);
+                    dust.pm2_5, dust.aqi);
         }
 	}
 }

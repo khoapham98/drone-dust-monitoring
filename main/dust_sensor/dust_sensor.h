@@ -16,7 +16,7 @@
 #define START_BIT   0
 #define STOP_BIT    9
 
-enum aqiLevel{
+enum aqiLevel {
     AQI_GOOD,
     AQI_MODERATE,
     AQI_SENSITIVE,
@@ -25,17 +25,23 @@ enum aqiLevel{
     AQI_HAZARDOUS
 };
 
-struct pm25_aqi_ctx{
+struct aqi_ctx {
     int iHigh;
     int iLow;
     float cHigh;
     float cLow;
+};
+
+struct dust_ctx {
+    uint16_t pm1_0;
+    uint16_t pm2_5;
+    uint16_t pm10;
     float aqi;
-    uint16_t pm25;
 };
 
 typedef enum aqiLevel eAqiLevel;
-typedef struct pm25_aqi_ctx pm25_aqi_ctx_t;
+typedef struct aqi_ctx aqi_calc_t;
+typedef struct dust_ctx dust_ctx_t;
 
 /**
  * @brief   Initialize the software UART interface for dust sensor communication
