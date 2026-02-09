@@ -16,9 +16,11 @@
 static const char* TAG = "device_setup";
 
 /* dust */
+TaskHandle_t dustTaskHandle;
 extern pm25_aqi_ctx_t ctx;
 
 /* gps */
+TaskHandle_t gpsTaskHandle;
 extern gps_ctx_t gps;
 
 void dustUpdateTask(void *pvParameters)
@@ -45,7 +47,6 @@ static int setupDustSensor(void)
 {
     dust_sensor_sw_uart_init();    
 
-    TaskHandle_t dustTaskHandle;
     BaseType_t ret = xTaskCreate(dustUpdateTask, "dust update task", 2048, NULL, 0, &dustTaskHandle);	
 
     if (ret != pdPASS) {
@@ -61,7 +62,6 @@ static int setupGPS(void)
 {
     gps_uart_init();
 
-    TaskHandle_t gpsTaskHandle;
     BaseType_t ret = xTaskCreate(gpsUpdateTask, "gps update task", 4096, NULL, 0, &gpsTaskHandle);	
 
     if (ret != pdPASS) {
