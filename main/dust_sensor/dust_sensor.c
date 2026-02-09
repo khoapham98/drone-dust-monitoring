@@ -118,16 +118,47 @@ static bool checkHeaderBytes(uint8_t* buf)
     return false;
 }
 
-void rmtPrint(rmt_symbol_word_t* rmt_buf, size_t totalItems) 
+void parseRmtToUart(uint8_t* recv_buf)
 {
-    for (int i = 0; i < totalItems; i++) {
-        ESP_LOGI(TAG, "rmt_buf[%d]:\n \
-                        duration0 = %d - level0 = %d\n \
-                        duration1 = %d - level1 = %d\n \
-                        ==============================",
-                        i, 
-                        (int) rmt_buf[i].duration0, (int) rmt_buf[i].level0,
-                        (int) rmt_buf[i].duration1, (int) rmt_buf[i].level1);
+    uint8_t tmp[10] = {0};
+    uint8_t bitCount = 0;
+    uint8_t bitIndex = 0;
+    uint8_t recvIndex = 0;
+
+    for (int i = 0; i < totalSymbols; i++) {
+        uint8_t bitNum = rmt_buf[i].duration0 / 104;
+        uint8_t bitLevel = rmt_buf[i].level0;
+        bitCount += bitNum;
+
+        for (int j = bitIndex; j < bitCount; j++) {
+            tmp[j] = bitLevel;
+        }
+        bitIndex = bitCount;
+
+        bitNum = rmt_buf[i].duration1 / 104;
+        bitLevel = rmt_buf[i].level1;
+        bitCount += bitNum;
+
+        for (int j = bitIndex; j < bitCount; j++) {
+            tmp[j] = bitLevel;
+        }
+        bitIndex = bitCount;
+
+        if (bitCount >= 10) {
+            if (tmp[0] == 0 && tmp[9] == 1) {
+                for (int j = 1; j < 9; j++) {
+                    recv_buf[recvIndex] |= tmp[j] << (j - 1);
+                }
+
+                recvIndex++;
+
+                if (recvIndex >= 32) 
+                    return;
+            }
+
+            bitCount = 0;
+            bitIndex = 0;
+        }
     }
 }
 
