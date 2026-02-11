@@ -118,6 +118,22 @@ static bool checkHeaderBytes(uint8_t* buf)
     return false;
 }
 
+/**
+ * @warning This function can cause stack overflow if RMT total symbols is large
+ */
+static void rmtDebugPrint(void) 
+{
+    for (int i = 0; i < totalSymbols; i++) {
+        ESP_LOGI(TAG, "rmt_buf[%d]:\n \
+                        duration0 = %d - level0 = %d\n \
+                        duration1 = %d - level1 = %d\n \
+                        ==============================",
+                        i, 
+                        (int) rmt_buf[i].duration0, (int) rmt_buf[i].level0,
+                        (int) rmt_buf[i].duration1, (int) rmt_buf[i].level1);
+    }
+}
+
 void parseRmtToUart(uint8_t* recv_buf)
 {
     uint8_t tmp[10] = {0};
@@ -179,6 +195,8 @@ bool getDustData(void)
     ESP_LOGD(TAG, "data received - total symbols: %zu", totalSymbols);
 
     uint8_t dust_buf[DUST_DATA_FRAME] = {0};
+
+    // rmtDebugPrint();
 
     parseRmtToUart(dust_buf);
 
