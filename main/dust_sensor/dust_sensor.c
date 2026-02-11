@@ -9,25 +9,16 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/message_buffer.h"
 #include "esp_log.h"
-#include "esp_attr.h" 
 #include "driver/gpio.h"
-#include "driver/gptimer.h"
-#include "../boards/board.h"
+#include "driver/rmt_rx.h"
+#include "board.h"
 #include "dust_sensor.h"
 
-/* message buffer */
-static MessageBufferHandle_t msgBuffer;
-static const size_t msgBufferSizeBytes = 64;
+extern TaskHandle_t dustTaskHandle;
 
 /* logger */
 static const char* TAG = "dust_sensor";
-
-/* uart software management */
-static bool isFirstAlarmEnable = false;
-static uint16_t bitIndex = START_BIT;
-static uint8_t byteIndex = 0;
 
 /* gpio */
 static const gpio_config_t gpio_cfg = {
@@ -35,39 +26,37 @@ static const gpio_config_t gpio_cfg = {
     .mode = GPIO_MODE_INPUT,
     .pull_up_en = GPIO_PULLUP_ENABLE,
     .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    .intr_type = GPIO_INTR_NEGEDGE
+    .intr_type = GPIO_INTR_DISABLE
 };
 
-/* timer */
-static gptimer_handle_t gptimerHandle;
+/* rmt */
+static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx);
 
-static bool IRAM_ATTR gptimer_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx);
+static rmt_channel_handle_t rmt_rx_channel;
 
-static gptimer_alarm_config_t first_alarm = {
-    .alarm_count = 52,
-    .reload_count = 0,
-    .flags.auto_reload_on_alarm = false
+static rmt_symbol_word_t rmt_buf[RMT_BUFFER_SIZE] = {0};
+
+static volatile size_t totalSymbols = 0;
+
+static const rmt_rx_channel_config_t rmt_rx_cfg = {
+    .gpio_num = UART_SW_RX_PIN,         
+    .clk_src  = RMT_CLK_SRC_DEFAULT,        // 80MHz
+    .intr_priority = 0,
+    .resolution_hz = 1000000,               // 1MHz ~ 1us
+    .mem_block_symbols = RMT_BUFFER_SIZE    // 128 items ~ 512 bytes
 };
 
-static gptimer_alarm_config_t bit_alarm = {
-    .alarm_count = 104,
-    .reload_count = 0,
-    .flags.auto_reload_on_alarm = true
+static const rmt_receive_config_t rmt_recv_cfg = {
+    .signal_range_min_ns = RMT_SIGNAL_MIN_3US,        
+    .signal_range_max_ns = RMT_SIGNAL_MAX_30MS     
 };
 
-static const gptimer_config_t gptimer_cfg = {
-    .clk_src = GPTIMER_CLK_SRC_DEFAULT,
-    .direction = GPTIMER_COUNT_UP,
-    .resolution_hz = 1000000,
-    .intr_priority = 1
-};
-
-static const gptimer_event_callbacks_t gptimer_cb = {
-    .on_alarm = gptimer_alarm_cb
+static const rmt_rx_event_callbacks_t rmt_rx_cb = {
+    .on_recv_done = rmt_rx_done_callback
 };
 
 /* dust data */
-pm25_aqi_ctx_t ctx = {0};
+dust_ctx_t dust = {0};
 
 static const int aqiRanges[AQI_LEVEL_COUNT][2] = {
     {0, 50}, 
@@ -97,25 +86,27 @@ static eAqiLevel getPm25AqiLevel(uint16_t pm25)
     return AQI_HAZARDOUS;
 }
 
-static void pm25ToAqi(void)
+static void pm2_5ToAqi(void)
 {
-    eAqiLevel level = getPm25AqiLevel(ctx.pm25);
+    eAqiLevel level = getPm25AqiLevel(dust.pm2_5);
 
-    ctx.iLow  = aqiRanges[level][0];
-    ctx.iHigh = aqiRanges[level][1];
-    ctx.cLow  = pm25Ranges[level][0];
-    ctx.cHigh = pm25Ranges[level][1];
+    aqi_calc_t aqi = {
+        .iLow  = aqiRanges[level][0],
+        .iHigh = aqiRanges[level][1],
+        .cLow  = pm25Ranges[level][0],
+        .cHigh = pm25Ranges[level][1]
+    };
 
-    if (ctx.cHigh == ctx.cLow) {
+    if (aqi.cHigh == aqi.cLow) {
         ESP_LOGE(TAG, "Invalid PM2.5 breakpoint - keep previous data");
         return;
     }
 
-    float rangeAqi = (float) (ctx.iHigh - ctx.iLow);
-    float rangeConcentration = (float) (ctx.cHigh - ctx.cLow);
-    float concentrationDiff  = (float) (ctx.pm25 - ctx.cLow);
+    float rangeAqi = (float) (aqi.iHigh - aqi.iLow);
+    float rangeConcentration = (float) (aqi.cHigh - aqi.cLow);
+    float concentrationDiff  = (float) (dust.pm2_5 - aqi.cLow);
 
-    ctx.aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) ctx.iLow;
+    dust.aqi = (rangeAqi / rangeConcentration) * concentrationDiff + (float) aqi.iLow;
 }
 
 static bool checkHeaderBytes(uint8_t* buf)
@@ -123,141 +114,158 @@ static bool checkHeaderBytes(uint8_t* buf)
     if (buf[0] == START_CHARACTER_1 && buf[1] == START_CHARACTER_2)
         return true;
     
-    ESP_LOGD(TAG, "Invalid header bytes: %02X %02X", buf[0], buf[1]);
+    ESP_LOGD(TAG, "Invalid header bytes: 0x%02X 0x%02X", buf[0], buf[1]);
     return false;
+}
+
+/**
+ * @warning This function can cause stack overflow if RMT total symbols is large
+ */
+static void rmtDebugPrint(void) 
+{
+    for (int i = 0; i < totalSymbols; i++) {
+        ESP_LOGI(TAG, "rmt_buf[%d]:\n \
+                        duration0 = %d - level0 = %d\n \
+                        duration1 = %d - level1 = %d\n \
+                        ==============================",
+                        i, 
+                        (int) rmt_buf[i].duration0, (int) rmt_buf[i].level0,
+                        (int) rmt_buf[i].duration1, (int) rmt_buf[i].level1);
+    }
+}
+
+static void parseRmtToUart(uint8_t* uartRxBuf)
+{
+    uint8_t bitsInLevel[2] = {0};
+    uint8_t level[2] = {0};
+    uint8_t bitCount = 0;
+    uint8_t bitShift = 0;
+    uint8_t currentByte = 0;
+    uint8_t recvIndex = 0;
+    bool isStartBitDetected = false;
+
+    for (int i = 0; i < totalSymbols; i++) {
+        level[0] = rmt_buf[i].level0;
+        level[1] = rmt_buf[i].level1;
+        bitsInLevel[0] = (rmt_buf[i].duration0 + UART_BIT_DURATION_US / 2) / UART_BIT_DURATION_US;
+        bitsInLevel[1] = (rmt_buf[i].duration1 + UART_BIT_DURATION_US / 2) / UART_BIT_DURATION_US;
+
+        for (int j = 0; j < 2; j++) {
+            while (bitsInLevel[j] > 0) {
+                if (!isStartBitDetected) {
+                    if (level[j] == 0) {
+                        isStartBitDetected = true;
+                        bitCount = 1;     
+                        bitShift = 0;
+                        currentByte = 0;
+                    }
+                    bitsInLevel[j]--;
+                    continue;
+                }
+
+                if (bitCount >= UART_START_BIT_COUNT && bitCount <= UART_DATA_BITS)
+                    currentByte |= (level[j] << bitShift++);
+
+                bitCount++;
+
+                if (bitCount == 10) {
+                    if (level[j] == 1) {
+                        uartRxBuf[recvIndex++] = currentByte;
+
+                        if (recvIndex >= DUST_DATA_FRAME)
+                            return;
+                    }
+
+                    isStartBitDetected = false;
+                    bitCount = 0;
+                    bitShift = 0;
+                    currentByte = 0;
+                }
+
+                bitsInLevel[j]--;
+            }
+        }
+    }
+}
+
+static void readPmValues(uint8_t* buf)
+{
+    dust.pm1_0 = (buf[10] << 8) | buf[11];
+    dust.pm2_5 = (buf[12] << 8) | buf[13]; 
+    dust.pm10  = (buf[14] << 8) | buf[15];
+
+    ESP_LOGI(TAG, "PM1.0 = %u - PM2.5 = %u - PM10 = %u - AQI: %.3f",
+            dust.pm1_0, dust.pm2_5, dust.pm10, dust.aqi);
 }
 
 bool getDustData(void)
 {
-    uint8_t dustBuffer[DUST_DATA_FRAME] = {0};
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    size_t receivedBytes = xMessageBufferReceive(msgBuffer, dustBuffer, DUST_DATA_FRAME, portMAX_DELAY);
-    
-    if (receivedBytes != DUST_DATA_FRAME) {
-        ESP_LOGE(TAG, "Dust frame size mismatch: expected %d bytes, got %d bytes",
-                DUST_DATA_FRAME, receivedBytes);
-        return false;
-    }
+    ESP_LOGD(TAG, "data received - total symbols: %zu", totalSymbols);
 
-    if (!checkHeaderBytes(dustBuffer)) {
-        ESP_LOGE(TAG, "Dust frame header invalid");
-        return false;
-    }
+    uint8_t dust_buf[DUST_DATA_FRAME] = {0};
 
-    ctx.pm25 = (dustBuffer[12] << 8) | dustBuffer[13]; 
+    // rmtDebugPrint();
 
-    pm25ToAqi();
+    parseRmtToUart(dust_buf);
 
-    return true;
+    bool ret = checkHeaderBytes(dust_buf);
+    if (ret == false)
+        goto start_rmt_rx;
+
+    readPmValues(dust_buf);
+
+    pm2_5ToAqi();
+
+start_rmt_rx:
+    rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
+
+    return ret;
 }
 
-static void IRAM_ATTR gpio_isr_handler(void *arg)
+static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx)
 {
-    if (gpio_get_level(UART_SW_RX_PIN) != 0)
-        return;
+    BaseType_t ret = pdFALSE;
 
-    if (gpio_intr_disable(UART_SW_RX_PIN) != ESP_OK)
-        return;
+    totalSymbols = edata->num_symbols;
 
-    byteIndex = 0;
+    vTaskNotifyGiveFromISR(dustTaskHandle, &ret);
 
-    if (gptimer_set_alarm_action(gptimerHandle, &first_alarm) != ESP_OK)
-        return;
-
-    isFirstAlarmEnable = true;
-
-    gptimer_start(gptimerHandle);
-}
-
-static bool gptimer_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
-{
-    if (isFirstAlarmEnable) {
-        if (gptimer_set_alarm_action(gptimerHandle, &bit_alarm) != ESP_OK)
-            return false;
-
-        isFirstAlarmEnable = false;
-    }
-    
-    static uint8_t byte = 0;
-    static uint8_t bitShift = 0;
-    static uint8_t buf[DUST_DATA_FRAME] = {0};
-
-    if (bitIndex == START_BIT) {
-        bitIndex++;
-    }
-    else if (bitIndex >= STOP_BIT) {
-        if (gpio_get_level(UART_SW_RX_PIN) == 1) {
-            buf[byteIndex++] = byte;
-        }
-
-        bitIndex = START_BIT;
-        bitShift = 0;
-        byte = 0;
-    }
-    else {
-        uint8_t bit = gpio_get_level(UART_SW_RX_PIN);
-        byte |= (bit << bitShift++);
-        bitIndex++;
-    }
-
-    if (byteIndex >= DUST_DATA_FRAME) {
-        xMessageBufferSendFromISR(msgBuffer, (void*) buf, DUST_DATA_FRAME, NULL);
-        gptimer_stop(gptimerHandle);
-        gpio_intr_enable(UART_SW_RX_PIN);
-    }
-
-    return true;
+    return ret;
 }
 
 int dust_sensor_sw_uart_init(void)
 {
-    msgBuffer = xMessageBufferCreate(msgBufferSizeBytes);
-    if (msgBuffer == NULL) {
-        ESP_LOGE(TAG, "Create message buffer failed");
-        return -1;
-    }
-
     esp_err_t ret = gpio_config(&gpio_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "GPIO configuration failed");
         return -1;
     }
 
-    ret = gpio_install_isr_service(0);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(TAG, "Install GPIO ISR handler failed");
+    ret = rmt_new_rx_channel(&rmt_rx_cfg, &rmt_rx_channel);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Create RMT RX channel failed");
         return -1;
     }
 
-    ret = gpio_isr_handler_add(UART_SW_RX_PIN, gpio_isr_handler, NULL);
+    ret = rmt_rx_register_event_callbacks(rmt_rx_channel, &rmt_rx_cb, NULL);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Add GPIO ISR handler failed");
-        return -1;
-    }
-    
-    ret = gpio_intr_enable(UART_SW_RX_PIN);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Enable GPIO interrupt failed");
+        ESP_LOGE(TAG, "RMT RX channel set callback failed");
         return -1;
     }
 
-    ret = gptimer_new_timer(&gptimer_cfg, &gptimerHandle);
+    ret = rmt_enable(rmt_rx_channel);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Create timer failed");
+        ESP_LOGE(TAG, "Enable RMT RX channel failed");
         return -1;
     }
 
-    ret = gptimer_register_event_callbacks(gptimerHandle, &gptimer_cb, NULL);
+    ret = rmt_receive(rmt_rx_channel, rmt_buf, sizeof(rmt_buf), &rmt_recv_cfg);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Set callback for timer failed");
+        ESP_LOGE(TAG, "Init RMT RX channel failed (0x%3X)", ret);
         return -1;
     }
 
-    ret = gptimer_enable(gptimerHandle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Enable timer failed");
-        return -1;
-    }
-    
 	return 0;
 }

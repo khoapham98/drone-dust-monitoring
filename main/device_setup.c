@@ -18,9 +18,11 @@
 static const char* TAG = "device_setup";
 
 /* dust */
-extern pm25_aqi_ctx_t ctx;
+TaskHandle_t dustTaskHandle;
+extern dust_ctx_t dust;
 
 /* gps */
+TaskHandle_t gpsTaskHandle;
 extern gps_ctx_t gps;
 
 void simManagerTask(void *pvParameters)
@@ -38,7 +40,7 @@ void dustUpdateTask(void *pvParameters)
 	while (1) {
         if (getDustData()) {
             ESP_LOGD(TAG, "Dust data received: PM2.5: %d - AQI: %.2f",
-                    ctx.pm25, ctx.aqi);
+                    dust.pm2_5, dust.aqi);
         }
 	}
 }
@@ -73,7 +75,6 @@ static int setupDustSensor(void)
 {
     dust_sensor_sw_uart_init();    
 
-    TaskHandle_t dustTaskHandle;
     BaseType_t ret = xTaskCreate(dustUpdateTask, "dust update task", 2048, NULL, 0, &dustTaskHandle);	
 
     if (ret != pdPASS) {
@@ -89,7 +90,6 @@ static int setupGPS(void)
 {
     gps_uart_init();
 
-    TaskHandle_t gpsTaskHandle;
     BaseType_t ret = xTaskCreate(gpsUpdateTask, "gps update task", 4096, NULL, 0, &gpsTaskHandle);	
 
     if (ret != pdPASS) {
