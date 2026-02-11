@@ -2,7 +2,7 @@
  * @file    at.c
  * @brief   Low-level AT command source file for send AT commands & receive responses
  */
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 
 #include <stdbool.h>
 #include <string.h>

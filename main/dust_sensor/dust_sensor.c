@@ -2,7 +2,7 @@
  * @file    dust_sensor.c
  * @brief   PMS7003 driver source file
  */
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -123,8 +123,10 @@ static bool checkHeaderBytes(uint8_t* buf)
  */
 static void rmtDebugPrint(void) 
 {
+    ESP_LOGD(TAG, "RMT total symbols: %zu", totalSymbols);
+
     for (int i = 0; i < totalSymbols; i++) {
-        ESP_LOGI(TAG, "rmt_buf[%d]:\n \
+        ESP_LOGD(TAG, "rmt_buf[%d]:\n \
                         duration0 = %d - level0 = %d\n \
                         duration1 = %d - level1 = %d\n \
                         ==============================",
@@ -194,15 +196,13 @@ static void readPmValues(uint8_t* buf)
     dust.pm2_5 = (buf[12] << 8) | buf[13]; 
     dust.pm10  = (buf[14] << 8) | buf[15];
 
-    ESP_LOGI(TAG, "PM1.0 = %u - PM2.5 = %u - PM10 = %u - AQI: %.3f",
+    ESP_LOGD(TAG, "PM1.0 = %u - PM2.5 = %u - PM10 = %u - AQI: %.3f",
             dust.pm1_0, dust.pm2_5, dust.pm10, dust.aqi);
 }
 
 bool getDustData(void)
 {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    ESP_LOGD(TAG, "data received - total symbols: %zu", totalSymbols);
 
     uint8_t dust_buf[DUST_DATA_FRAME] = {0};
 
