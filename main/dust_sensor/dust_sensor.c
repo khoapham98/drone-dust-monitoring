@@ -134,46 +134,56 @@ static void rmtDebugPrint(void)
     }
 }
 
-void parseRmtToUart(uint8_t* recv_buf)
+static void parseRmtToUart(uint8_t* uartRxBuf)
 {
-    uint8_t tmp[10] = {0};
+    uint8_t bitsInLevel[2] = {0};
+    uint8_t level[2] = {0};
     uint8_t bitCount = 0;
-    uint8_t bitIndex = 0;
+    uint8_t bitShift = 0;
+    uint8_t currentByte = 0;
     uint8_t recvIndex = 0;
+    bool isStartBitDetected = false;
 
     for (int i = 0; i < totalSymbols; i++) {
-        uint8_t bitNum = rmt_buf[i].duration0 / UART_BIT_DURATION_US;
-        uint8_t bitLevel = rmt_buf[i].level0;
-        bitCount += bitNum;
+        level[0] = rmt_buf[i].level0;
+        level[1] = rmt_buf[i].level1;
+        bitsInLevel[0] = (rmt_buf[i].duration0 + UART_BIT_DURATION_US / 2) / UART_BIT_DURATION_US;
+        bitsInLevel[1] = (rmt_buf[i].duration1 + UART_BIT_DURATION_US / 2) / UART_BIT_DURATION_US;
 
-        for (int j = bitIndex; j < bitCount; j++) {
-            tmp[j] = bitLevel;
-        }
-        bitIndex = bitCount;
-
-        bitNum = rmt_buf[i].duration1 / UART_BIT_DURATION_US;
-        bitLevel = rmt_buf[i].level1;
-        bitCount += bitNum;
-
-        for (int j = bitIndex; j < bitCount; j++) {
-            tmp[j] = bitLevel;
-        }
-        bitIndex = bitCount;
-
-        if (bitCount >= 10) {
-            if (tmp[START_BIT] == 0 && tmp[STOP_BIT] == 1) {
-                for (int j = 1; j < 9; j++) {
-                    recv_buf[recvIndex] |= tmp[j] << (j - 1);
+        for (int j = 0; j < 2; j++) {
+            while (bitsInLevel[j] > 0) {
+                if (!isStartBitDetected) {
+                    if (level[j] == 0) {
+                        isStartBitDetected = true;
+                        bitCount = 1;     
+                        bitShift = 0;
+                        currentByte = 0;
+                    }
+                    bitsInLevel[j]--;
+                    continue;
                 }
 
-                recvIndex++;
+                if (bitCount >= UART_START_BIT_COUNT && bitCount <= UART_DATA_BITS)
+                    currentByte |= (level[j] << bitShift++);
 
-                if (recvIndex >= DUST_DATA_FRAME) 
-                    return;
+                bitCount++;
+
+                if (bitCount == 10) {
+                    if (level[j] == 1) {
+                        uartRxBuf[recvIndex++] = currentByte;
+
+                        if (recvIndex >= DUST_DATA_FRAME)
+                            return;
+                    }
+
+                    isStartBitDetected = false;
+                    bitCount = 0;
+                    bitShift = 0;
+                    currentByte = 0;
+                }
+
+                bitsInLevel[j]--;
             }
-
-            bitCount = 0;
-            bitIndex = 0;
         }
     }
 }

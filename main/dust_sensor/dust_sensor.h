@@ -13,9 +13,6 @@
 #define START_CHARACTER_1   0x42
 #define START_CHARACTER_2   0x4D
 
-#define START_BIT   0
-#define STOP_BIT    9
-
 #define RMT_BUFFER_SIZE         128
 #define DURATION0_PHASE         0
 #define DURATION1_PHASE         1
@@ -32,6 +29,9 @@
 #define UART_BAUDRATE           9600
 #define US_PER_SECOND           1000000
 #define UART_BIT_DURATION_US    (US_PER_SECOND / UART_BAUDRATE)
+
+#define UART_DATA_BITS          8
+#define UART_START_BIT_COUNT    1
 
 enum aqiLevel {
     AQI_GOOD,
