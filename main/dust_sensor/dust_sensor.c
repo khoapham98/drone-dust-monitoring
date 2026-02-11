@@ -34,21 +34,21 @@ static bool rmt_rx_done_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done
 
 static rmt_channel_handle_t rmt_rx_channel;
 
-static rmt_symbol_word_t rmt_buf[128] = {0};
+static rmt_symbol_word_t rmt_buf[RMT_BUFFER_SIZE] = {0};
 
 static volatile size_t totalSymbols = 0;
 
 static const rmt_rx_channel_config_t rmt_rx_cfg = {
     .gpio_num = UART_SW_RX_PIN,         
-    .clk_src  = RMT_CLK_SRC_DEFAULT,    // 80MHz
+    .clk_src  = RMT_CLK_SRC_DEFAULT,        // 80MHz
     .intr_priority = 0,
-    .resolution_hz = 1000000,           // 1MHz ~ 1us
-    .mem_block_symbols = 128            // 128 RMT items ~ 512 bytes
+    .resolution_hz = 1000000,               // 1MHz ~ 1us
+    .mem_block_symbols = RMT_BUFFER_SIZE    // 128 items ~ 512 bytes
 };
 
 static const rmt_receive_config_t rmt_recv_cfg = {
-    .signal_range_min_ns = 3000,        // 3us
-    .signal_range_max_ns = 30000000     // 30ms
+    .signal_range_min_ns = RMT_SIGNAL_MIN_3US,        
+    .signal_range_max_ns = RMT_SIGNAL_MAX_30MS     
 };
 
 static const rmt_rx_event_callbacks_t rmt_rx_cb = {
@@ -126,7 +126,7 @@ void parseRmtToUart(uint8_t* recv_buf)
     uint8_t recvIndex = 0;
 
     for (int i = 0; i < totalSymbols; i++) {
-        uint8_t bitNum = rmt_buf[i].duration0 / 104;
+        uint8_t bitNum = rmt_buf[i].duration0 / UART_BIT_DURATION_US;
         uint8_t bitLevel = rmt_buf[i].level0;
         bitCount += bitNum;
 
@@ -135,7 +135,7 @@ void parseRmtToUart(uint8_t* recv_buf)
         }
         bitIndex = bitCount;
 
-        bitNum = rmt_buf[i].duration1 / 104;
+        bitNum = rmt_buf[i].duration1 / UART_BIT_DURATION_US;
         bitLevel = rmt_buf[i].level1;
         bitCount += bitNum;
 
@@ -145,14 +145,14 @@ void parseRmtToUart(uint8_t* recv_buf)
         bitIndex = bitCount;
 
         if (bitCount >= 10) {
-            if (tmp[0] == 0 && tmp[9] == 1) {
+            if (tmp[START_BIT] == 0 && tmp[STOP_BIT] == 1) {
                 for (int j = 1; j < 9; j++) {
                     recv_buf[recvIndex] |= tmp[j] << (j - 1);
                 }
 
                 recvIndex++;
 
-                if (recvIndex >= 32) 
+                if (recvIndex >= DUST_DATA_FRAME) 
                     return;
             }
 
