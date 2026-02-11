@@ -27,7 +27,6 @@ extern gps_ctx_t gps;
 
 void simManagerTask(void *pvParameters)
 {
-    ESP_LOGI(TAG, "Enter sim task");
     fsm_context_init();
 
 	while (1) {
