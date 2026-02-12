@@ -13,7 +13,7 @@
 #include "dust_sensor.h"
 #include "gps.h"
 #include "at.h"
-#include "fsm.h"
+#include "fsm_manager.h"
 
 static const char* TAG = "device_setup";
 
