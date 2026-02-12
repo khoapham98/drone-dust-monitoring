@@ -104,7 +104,7 @@ int deviceSetup(void)
 {
     int err = 0;
 
-#if SIM_ENALBE
+#if SIM_ENABLE
     err = setupSim();
     if (err != 0)
         ESP_LOGE(TAG, "Failed to setup sim");
