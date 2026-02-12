@@ -1,17 +1,18 @@
 /**
- * @file    sim.c
- * @brief   SIM state handlers for FSM control and state transition logic
+ * @file    sim_fsm.c
+ * @brief   Implementation of SIM state handlers and transition logic
  */
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "sim_cmd.h"
-#include "sim.h"
-#include "fsm.h"
+#include "modem_common.h"
+#include "sim_service.h"
+#include "sim_fsm.h"
+#include "fsm_manager.h"
 
-static const char* TAG = "sim";
+static const char* TAG = "sim_fsm";
 
 static const char* simStateStr[] = {
     "SIM_STATE_RESET",
@@ -21,7 +22,7 @@ static const char* simStateStr[] = {
     "SIM_STATE_PDP_ACTIVE"
 };
 
-static void updateSimState(eSimResult res, eSimState nextState)
+static void updateSimState(eModemResult res, eSimState nextState)
 {
     if (res == FAIL) {
         setSimState(SIM_STATE_RESET);
@@ -35,7 +36,7 @@ static void updateSimState(eSimResult res, eSimState nextState)
         setSimState(nextState);
     } 
     else {
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -45,7 +46,7 @@ static void simResetStatusHandler(void)
         if (simCheckAlive() == PASS)
             break;
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     updateSimState(PASS, SIM_STATE_AT_SYNC);
@@ -53,7 +54,7 @@ static void simResetStatusHandler(void)
 
 static void atSyncStatusHandler(void)
 {
-    eSimResult res = PASS;
+    eModemResult res = PASS;
     if (simCheckAlive() == FAIL || simEchoOff() == FAIL) {
         res = FAIL;
     }
@@ -63,19 +64,19 @@ static void atSyncStatusHandler(void)
 
 static void simReadyStatusHandler(void)
 {
-    eSimResult res = simCheckReady();
+    eModemResult res = simCheckReady();
     updateSimState(res, SIM_STATE_NET_READY);
 }
 
 static void netReadyStatusHandler(void)
 {
-    eSimResult res = simCheckRegEps();
+    eModemResult res = simCheckRegEps();
     updateSimState(res, SIM_STATE_PDP_ACTIVE);
 }
 
 static void pdpActiveStatusHandler(void)
 {
-    eSimResult res = simSetPdpContext();
+    eModemResult res = simSetPdpContext();
     if (res != PASS)    
         goto end;
 

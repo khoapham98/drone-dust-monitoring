@@ -1,9 +1,9 @@
-/**
- * @file    fsm.h
- * @brief   Finite State Machine coordinator for SIM and transport layers
+ /**
+ * @file    fsm_manager.h
+ * @brief   Central coordinator for modem finite state machines
  */
-#ifndef _FSM_H_
-#define _FSM_H_
+#ifndef _FSM_MANAGER_H_
+#define _FSM_MANAGER_H_
 
 enum simState {
     SIM_STATE_RESET,
@@ -43,8 +43,7 @@ typedef enum mqttState eMqttState;
 typedef enum httpState eHttpState;
 typedef enum transportType eTransportType;
 
-struct fsm_context_t
-{
+struct fsm_context_t {
     eFsmLayer layer;
     eSimState simState;
     eTransportType transType;

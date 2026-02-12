@@ -1,11 +1,9 @@
-/**
- * @file    fsm.c
- * @brief   Finite State Machine coordinator for SIM and transport layers
+ /**
+ * @file    fsm_manager.c
+ * @brief   Implementation of central coordinator for modem finite state machines
  */
-#include "sim.h"
-// #include "transport/mqtt.h"
-// #include "transport/http.h"
-#include "fsm.h"
+#include "fsm_manager.h"
+#include "sim_fsm.h"
 
 static fsm_ctx_t ctx = {0};
 

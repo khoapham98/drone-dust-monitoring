@@ -1,10 +1,10 @@
 /**
- * @file    sim.h
- * @brief   SIM state handlers for FSM control and state transition logic
+ * @file    sim_fsm.h
+ * @brief   SIM layer state machine handlers and transition logic
  */
-#ifndef _SIM_H_
-#define _SIM_H_
-#include "fsm.h"
+#ifndef _SIM_FSM_H_
+#define _SIM_FSM_H_
+#include "fsm_manager.h"
 
 /**
  * @brief Handle SIM layer FSM based on current SIM state.

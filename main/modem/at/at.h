@@ -6,8 +6,6 @@
 #define _AT_H_
 #include <stdint.h>
 
-#define RESP_FRAME                  256
-
 /**
  * @brief   Send an AT command and wait for the response.
  * @param   cmd Null-terminated AT command string (without newline).
