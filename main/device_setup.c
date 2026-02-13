@@ -8,24 +8,33 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "device_setup.h"
 #include "dust_sensor.h"
 #include "gps.h"
 #include "at.h"
 #include "fsm_manager.h"
+#include "payload.h"
 
 static const char* TAG = "device_setup";
 
 /* dust */
-TaskHandle_t dustTaskHandle;
+TaskHandle_t dustTaskHandle = NULL;
 extern dust_ctx_t dust;
 
 /* gps */
-TaskHandle_t gpsTaskHandle;
+TaskHandle_t gpsTaskHandle = NULL;
 extern gps_ctx_t gps;
 
-void simManagerTask(void *pvParameters)
+/* modem */
+TaskHandle_t simTaskHandle = NULL;
+
+/* data sync */
+TaskHandle_t dataSyncTaskHandle = NULL;
+EventGroupHandle_t eventGroupHandle = NULL;
+
+static void simManagerTask(void *pvParameters)
 {
     fsm_context_init();
 
@@ -34,23 +43,40 @@ void simManagerTask(void *pvParameters)
 	}
 }
 
-void dustUpdateTask(void *pvParameters)
+static void dustUpdateTask(void *pvParameters)
 {
 	while (1) {
         if (getDustData()) {
             ESP_LOGD(TAG, "Dust data received: PM2.5: %d - AQI: %.2f",
                     dust.pm2_5, dust.aqi);
+            
+            xEventGroupSetBits(eventGroupHandle, DUST_EVENT_BIT);
         }
 	}
 }
 
-void gpsUpdateTask(void *pvParameters)
+static void gpsUpdateTask(void *pvParameters)
 {
 	while (1) {
         if (getGpsData()) {
             ESP_LOGD(TAG, "GPS data received: lat: %.7f - lon: %.7f - alt: %.2f m",
                     gps.lat, gps.lon, gps.alt);
+
+            xEventGroupSetBits(eventGroupHandle, GPS_EVENT_BIT);
         }
+	}
+}
+
+static void dataSyncTask(void *pvParameters)
+{
+	while (1) {
+        BaseType_t waitForAllBits = DUST_SENSOR_ENABLE && GPS_ENABLE;
+
+        xEventGroupWaitBits(
+            eventGroupHandle, 
+            DUST_EVENT_BIT | GPS_EVENT_BIT,
+            pdTRUE, waitForAllBits, portMAX_DELAY);
+
 	}
 }
 
@@ -58,9 +84,7 @@ static int setupSim(void)
 {
     sim_uart_init();    
 
-    TaskHandle_t simTaskHandle;
     BaseType_t ret = xTaskCreate(simManagerTask, "sim manager task", 4096, NULL, 0, &simTaskHandle);	
-
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create Sim task!");
         return -1;
@@ -75,7 +99,6 @@ static int setupDustSensor(void)
     dust_sensor_sw_uart_init();    
 
     BaseType_t ret = xTaskCreate(dustUpdateTask, "dust update task", 2048, NULL, 0, &dustTaskHandle);	
-
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create Dust task!");
         return -1;
@@ -90,7 +113,6 @@ static int setupGPS(void)
     gps_uart_init();
 
     BaseType_t ret = xTaskCreate(gpsUpdateTask, "gps update task", 4096, NULL, 0, &gpsTaskHandle);	
-
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create GPS task!");
         return -1;
@@ -100,9 +122,29 @@ static int setupGPS(void)
     return 0;
 }
 
+static int setupSyncTask(void) 
+{
+    eventGroupHandle = xEventGroupCreate();
+    if (eventGroupHandle == NULL) {
+        ESP_LOGE(TAG, "Failed to create event group");
+        return -1;
+    }
+    
+    BaseType_t ret = xTaskCreate(dataSyncTask, "data sync task", 2048, NULL, 0, &dataSyncTaskHandle);	
+    if (ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create Data sync task!");
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "Data sync task created");
+    return 0;
+}
+
 int deviceSetup(void)
 {
-    int err = 0;
+    int err = setupSyncTask();
+    if (err != 0)
+        ESP_LOGE(TAG, "Failed to setup data sync");
 
 #if SIM_ENABLE
     err = setupSim();

@@ -10,6 +10,7 @@ idf_component_register(
         "modem/service/mqtt_service.c"
         "modem/fsm/sim_fsm.c"
         "modem/fsm/fsm_manager.c"
+        "payload/payload.c"
     INCLUDE_DIRS 
         "."
         "../boards"
@@ -19,4 +20,5 @@ idf_component_register(
         "modem/at"
         "modem/service"
         "modem/fsm"
+        "payload"
     )
