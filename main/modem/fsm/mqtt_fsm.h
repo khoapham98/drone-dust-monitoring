@@ -4,7 +4,6 @@
  */
 #ifndef _MQTT_FSM_H_
 #define _MQTT_FSM_H_
-#include "fsm_manager.h"
 
 enum ClientIndex {
     FIRST,
@@ -40,6 +39,15 @@ struct PublishMessageConfig {
     int publishTimeout;
 };
 
+enum mqttState {
+    MQTT_STATE_RESET,
+    MQTT_STATE_START,
+    MQTT_STATE_ACCQ,
+    MQTT_STATE_CONNECT,
+    MQTT_STATE_READY
+};
+
+typedef enum mqttState eMqttState;
 typedef struct ClientConfig mqttClient;
 typedef struct ServerConfig mqttServer;
 typedef struct PublishMessageConfig mqttPubMsg;

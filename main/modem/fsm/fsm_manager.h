@@ -4,28 +4,9 @@
  */
 #ifndef _FSM_MANAGER_H_
 #define _FSM_MANAGER_H_
-
-enum simState {
-    SIM_STATE_RESET,
-    SIM_STATE_AT_SYNC,
-    SIM_STATE_SIM_READY,
-    SIM_STATE_NET_READY,
-    SIM_STATE_PDP_ACTIVE,        
-};
-
-enum mqttState {
-    MQTT_STATE_RESET,
-    MQTT_STATE_START,
-    MQTT_STATE_ACCQ,
-    MQTT_STATE_CONNECT,
-    MQTT_STATE_READY
-};
-
-enum httpState {
-    HTTP_STATE_PREPARE,
-    HTTP_STATE_SEND,
-    HTTP_STATE_STOP
-};
+#include "sim_fsm.h"
+#include "mqtt_fsm.h"
+#include "http_fsm.h"
 
 enum fsmLayer {
     FSM_LAYER_SIM,
@@ -37,18 +18,15 @@ enum transportType {
     TRANSPORT_MQTT
 };
 
-typedef enum fsmLayer  eFsmLayer; 
-typedef enum simState  eSimState;
-typedef enum mqttState eMqttState;
-typedef enum httpState eHttpState;
+typedef enum fsmLayer eFsmLayer; 
 typedef enum transportType eTransportType;
 
 struct fsm_context_t {
     eFsmLayer layer;
     eSimState simState;
-    eTransportType transType;
     eMqttState mqttState;
     eHttpState httpState;
+    eTransportType transType;
 };
 
 typedef struct fsm_context_t fsm_ctx_t;
