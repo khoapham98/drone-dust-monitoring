@@ -2,7 +2,7 @@
  * @file    device_setup.c
  * @brief   setup device source file
  */
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 
 #include <string.h>
 #include <stdbool.h>
@@ -16,6 +16,8 @@
 #include "at.h"
 #include "fsm_manager.h"
 #include "payload.h"
+#include "mqtt_fsm.h"
+#include "transport_config.h"
 
 static const char* TAG = "device_setup";
 
@@ -69,20 +71,58 @@ static void gpsUpdateTask(void *pvParameters)
 
 static void dataSyncTask(void *pvParameters)
 {
-	while (1) {
-        BaseType_t waitForAllBits = DUST_SENSOR_ENABLE && GPS_ENABLE;
+    BaseType_t waitForAllBits = DUST_SENSOR_ENABLE && GPS_ENABLE;
 
+	while (1) {
+#if DUST_SENSOR_ENABLE || GPS_ENABLE
         xEventGroupWaitBits(
             eventGroupHandle, 
             DUST_EVENT_BIT | GPS_EVENT_BIT,
             pdTRUE, waitForAllBits, portMAX_DELAY);
+#endif
 
+#if !DUST_SENSOR_ENABLE
+        dust.pm2_5 = 30;
+        dust.aqi = 50;
+#endif
+
+#if !GPS_ENABLE
+        gps.lat = DEFAULT_LATITUDE;
+        gps.lon = DEFAULT_LONGITUDE;
+        gps.alt = DEFAULT_ALTITUDE;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+#endif
+ 
+        telemetryEnqueueJson(gps.lat, gps.lon, gps.alt, dust.pm2_5, dust.aqi);
 	}
 }
 
 static int setupSim(void) 
 {
     sim_uart_init();    
+
+    mqttClient client = {
+        .index = FIRST,
+        .ID    = MQTT_CLIENT_ID,
+        .userName = MQTT_USERNAME,
+        .password = MQTT_PASSWORD,
+        .keepAliveTime = MQTT_KEEPALIVE_600S,
+        .cleanSession  = MQTT_PERSIST_SESSION
+    };
+
+    mqttServer server = {
+        .type = TCP,
+        .addr = MQTT_SERVER_ADDR
+    };
+
+    mqttPubMsg message = {
+        .qos   = MQTT_QOS_1,
+        .topic = MQTT_PUB_TOPIC,
+        .topicLength = strlen(message.topic),
+        .publishTimeout = PUBLISH_TIMEOUT_30S
+    };
+
+    mqtt_context_init(&client, &server, &message);
 
     BaseType_t ret = xTaskCreate(simManagerTask, "sim manager task", 4096, NULL, 0, &simTaskHandle);	
     if (ret != pdPASS) {
