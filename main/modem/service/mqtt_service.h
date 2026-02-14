@@ -5,6 +5,7 @@
 #ifndef _MQTT_SERVICE_H_
 #define _MQTT_SERVICE_H_
 #include "modem_common.h"
+#include "mqtt_fsm.h"
 
 enum mqtt_err {
     MQTT_RES_OK = 0,
@@ -59,6 +60,14 @@ typedef enum mqtt_err eMqttError;
 #define AT_CMD_MQTT_PUBLISH         "AT+CMQTTPUB=%d,%d,%d\r\n"
 
 /**
+ * @brief Stop MQTT service.
+ * @return PASS if service stoped,
+ *         FAIL if stoped rejected or already failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eModemResult mqttStopService(void);
+
+/**
  * @brief Start MQTT service.
  * @return PASS if service started,
  *         FAIL if start rejected or already failed,
@@ -94,7 +103,7 @@ eModemResult mqttAcquireClient(int index, char* id, int type);
  *         FAIL if connection failed,
  *         WAIT if command send failed or response not ready.
  */
-// eModemResult mqttConnect(mqttClient* cli, mqttServer* ser);
+eModemResult mqttConnect(mqttClient* cli, mqttServer* ser);
 
 /**
  * @brief Disconnect from MQTT server.

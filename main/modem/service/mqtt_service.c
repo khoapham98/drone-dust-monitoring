@@ -32,6 +32,26 @@ eModemResult mqttStartService(void)
     return FAIL; 
 }
 
+eModemResult mqttStopService(void)
+{
+    char resp[RESP_BUFFER_SIZE] = {0};
+
+    if (at_send_wait(AT_CMD_MQTT_STOP, resp, sizeof(resp), 100) < 0)
+        return WAIT;
+
+    char* str = strstr(resp, "CMQTTSTOP");
+    if (str == NULL) 
+        return FAIL;
+
+    eMqttError err = -1;
+    sscanf(str, "CMQTTSTOP: %d", (int*) &err);
+
+    if (err == MQTT_RES_OK) 
+        return PASS;
+
+    return FAIL; 
+}
+
 eModemResult mqttReleaseClient(int index)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
@@ -113,31 +133,31 @@ eModemResult mqttDisconnect(int index, int timeout)
     return FAIL;
 }
 
-// eModemResult mqttConnect(mqttClient* cli, mqttServer* ser)
-// {
-//     char resp[RESP_BUFFER_SIZE] = {0};
-//     char cmd[CMD_BUFFER_SIZE] = {0};
-//     snprintf(cmd, sizeof(cmd),
-//             AT_CMD_MQTT_CONNECT,
-//             cli->index, ser->addr, cli->keepAliveTime, 
-//             cli->cleanSession, cli->userName, cli->password);
+eModemResult mqttConnect(mqttClient* cli, mqttServer* ser)
+{
+    char resp[RESP_BUFFER_SIZE] = {0};
+    char cmd[CMD_BUFFER_SIZE] = {0};
+    snprintf(cmd, sizeof(cmd),
+            AT_CMD_MQTT_CONNECT,
+            cli->index, ser->addr, cli->keepAliveTime, 
+            cli->cleanSession, cli->userName, cli->password);
 
-//     if (at_send_wait(cmd, resp, sizeof(resp), 2000) < 0)
-//         return WAIT;
+    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+        return WAIT;
 
-//     char* str = strstr(resp, "CMQTTCONNECT");
-//     if (str == NULL)
-//         return FAIL;
+    char* str = strstr(resp, "CMQTTCONNECT");
+    if (str == NULL)
+        return FAIL;
 
-//     int clientIndex = -1;
-//     eMqttError err = -1;
-//     sscanf(str, "CMQTTCONNECT: %d,%d", &clientIndex, (int*) &err);
+    int clientIndex = -1;
+    eMqttError err = -1;
+    sscanf(str, "CMQTTCONNECT: %d,%d", &clientIndex, (int*) &err);
 
-//     if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED)
-//         return PASS;
+    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED)
+        return PASS;
 
-//     return FAIL;
-// }
+    return FAIL;
+}
 
 eModemResult mqttSetPublishTopic(int index, char* topic, int len)
 {
