@@ -4,6 +4,7 @@
  */
 #include "fsm_manager.h"
 #include "sim_fsm.h"
+#include "mqtt_fsm.h"
 
 static fsm_ctx_t ctx = {0};
 
@@ -18,12 +19,10 @@ void fsmHandler(void)
     case FSM_LAYER_TRANSPORT:
         switch (ctx.transType)
         {
-        case TRANSPORT_HTTP:
-            // httpFsmHandler(ctx.httpState);
-            break;
         case TRANSPORT_MQTT:
-            // mqttFsmHandler(ctx.mqttState);
+            mqttFsmHandler(ctx.mqttState);
             break;
+
         default:
             break;
         }
