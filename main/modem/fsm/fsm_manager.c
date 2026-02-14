@@ -5,6 +5,7 @@
 #include "fsm_manager.h"
 #include "sim_fsm.h"
 #include "mqtt_fsm.h"
+#include "http_fsm.h"
 
 static fsm_ctx_t ctx = {0};
 
@@ -21,6 +22,10 @@ void fsmHandler(void)
         {
         case TRANSPORT_MQTT:
             mqttFsmHandler(ctx.mqttState);
+            break;
+
+        case TRANSPORT_HTTP:
+            httpFsmHandler(ctx.httpState);
             break;
 
         default:
@@ -74,5 +79,5 @@ void fsm_context_init(void)
     ctx.transType = TRANSPORT_MQTT;
     ctx.simState  = SIM_STATE_RESET;
     ctx.mqttState = MQTT_STATE_RESET;
-    ctx.httpState = HTTP_STATE_PREPARE;
+    ctx.httpState = HTTP_STATE_WAIT_TRIGGER;
 }
