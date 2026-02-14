@@ -35,6 +35,8 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
 
     uart_flush(uart_num);
 
+    ESP_LOGD(TAG, "Sent: %s", cmd);
+
     uart_write_bytes(uart_num, cmd, strlen(cmd));
 
     uint64_t last_rx_time = esp_timer_get_time() / 1000;
@@ -65,7 +67,7 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
                 return -1;
             }
 
-            ESP_LOGD(TAG, "\nSend: %s\nResponse:\n%s", cmd, recv_buf);
+            ESP_LOGD(TAG, "Response:\n%s", recv_buf);
 
             return total;
         }
