@@ -12,7 +12,7 @@ eModemResult httpStartService(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_HTTP_START, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(AT_CMD_HTTP_START, resp, sizeof(resp), 50) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -25,7 +25,7 @@ eModemResult httpStopService(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_HTTP_STOP, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(AT_CMD_HTTP_STOP, resp, sizeof(resp), 50) < 0)
         return WAIT;
 
     if (strstr(resp, "ERROR") || strstr(resp, "OK")) 
@@ -40,7 +40,7 @@ eModemResult httpSetUrl(const char* url)
     char cmd[RESP_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_URL, url);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 80) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -55,7 +55,7 @@ eModemResult httpSetContent(const char* content)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_CONTENT, content);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -70,7 +70,7 @@ eModemResult httpSetAccept(const char* acptType)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_ACCEPT, acptType);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -85,7 +85,7 @@ eModemResult httpSetConnectionTimeout(int timeout)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_CONN_TIMEOUT, timeout);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -100,7 +100,7 @@ eModemResult httpSetReceptionTimeout(int timeout)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_RECV_TIMEOUT, timeout);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -115,7 +115,7 @@ eModemResult httpSetSslContextId(int ctx_id)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_SSL, ctx_id);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -130,7 +130,7 @@ eModemResult httpSetCustomHeader(const char* header)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SET_USER_DATA, header);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 70) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -147,7 +147,7 @@ eModemResult httpSendData(char* data, int len, int time)
             AT_CMD_HTTP_INPUT_DATA,
             len, time);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 50) < 0)
         return WAIT;
 
     if (!strstr(resp, "DOWNLOAD"))
@@ -155,7 +155,7 @@ eModemResult httpSendData(char* data, int len, int time)
 
     memset(resp, 0, sizeof(resp));
 
-    if (at_send_wait(data, resp, sizeof(resp), 200) < 0)
+    if (at_send_wait(data, resp, sizeof(resp), 130) < 0)
         return WAIT;
    
     if (strstr(resp, "OK"))
@@ -170,7 +170,7 @@ eModemResult httpSendAction(int method)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd), AT_CMD_HTTP_SEND_ACTION, method);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 2000) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 50) < 0)
         return WAIT;
 
     return PASS;
