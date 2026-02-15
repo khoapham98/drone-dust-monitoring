@@ -28,6 +28,18 @@ static const uart_config_t uart_cfg = {
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
 };
 
+static bool isFinalResponse(char* recv_buf)
+{
+    bool isOkDetected = (strstr(recv_buf, "\r\nOK\r\n") != NULL);
+    bool isErrorDetected = (strstr(recv_buf, "\r\nERROR\r\n") != NULL);
+    bool isPromptDetected =  (strstr(recv_buf, "\r\n> ") != NULL);
+
+    if (isOkDetected || isErrorDetected || isPromptDetected)
+        return true;
+
+    return false;
+}
+
 int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
 {
     if (!cmd || !recv_buf || len == 0)
@@ -55,6 +67,11 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
             memcpy(recv_buf + total, tmp, copy);
             total += copy;
             recv_buf[total] = 0;
+
+            if (isFinalResponse(recv_buf)) {
+                ESP_LOGD(TAG, "Response:\n%s", recv_buf);
+                return total;
+            }
 
             last_rx_time = esp_timer_get_time() / 1000;
         }
