@@ -247,7 +247,7 @@ eModemResult mqttPublish(int index, int QoS, int pub_timeout)
             AT_CMD_MQTT_PUBLISH,
             index, QoS, pub_timeout);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 30) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 50) < 0)
         return WAIT;
 
     char* str = strstr(resp, "CMQTTPUB");
