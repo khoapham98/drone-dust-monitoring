@@ -247,12 +247,19 @@ eModemResult mqttPublish(int index, int QoS, int pub_timeout)
             AT_CMD_MQTT_PUBLISH,
             index, QoS, pub_timeout);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 50) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), 30) < 0)
         return WAIT;
 
     char* str = strstr(resp, "CMQTTPUB");
-    if (str == NULL)
-        return FAIL;
+
+    if (str == NULL) {
+        if (at_wait(resp + strlen(resp), sizeof(resp), 30) < 0)
+            return FAIL;    
+
+        str = strstr(resp, "CMQTTPUB");
+        if (str == NULL)
+            return FAIL;
+    }
 
     int clientIndex = -1;
     eMqttError err = -1;
