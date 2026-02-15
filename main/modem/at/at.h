@@ -12,7 +12,7 @@
  * @param   recv_buf Pointer to buffer to store response message.
  * @param   len Length of the receive buffer.
  * @param   timeout_ms Maximum time to wait for the response, in milliseconds.
- * @return  0 on success (response received); -1 on error.
+ * @return  Total number of bytes received on success; -1 on error.
  */
 int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms);
 
@@ -23,6 +23,15 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms);
  * @return  Number of bytes written on success; -1 on error.
  */
 int at_send(char* cmd, size_t len);
+
+/**
+ * @brief   Wait for AT response from UART.
+ * @param   recv_buf Pointer to buffer to store response message.
+ * @param   len Length of the receive buffer.
+ * @param   timeout_ms Maximum time to wait for the response, in milliseconds.
+ * @return  Total number of bytes received on success; -1 on error.
+ */
+int at_wait(char* recv_buf, size_t len, uint64_t timeout_ms);
 
 /**
  * @brief   Initialize the UART interface for AT communication.

@@ -42,14 +42,18 @@ static bool isFinalResponse(char* recv_buf)
 
 int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
 {
-    if (!cmd || !recv_buf || len == 0)
-        return -1;
+    if (!cmd || !recv_buf || len == 0) return -1;
 
     uart_flush(uart_num);
 
-    ESP_LOGD(TAG, "Sent: %s", cmd);
+    at_send(cmd, strlen(cmd));
 
-    uart_write_bytes(uart_num, cmd, strlen(cmd));
+    return at_wait(recv_buf, len, timeout_ms);
+}
+
+int at_wait(char* recv_buf, size_t len, uint64_t timeout_ms)
+{
+    if (!recv_buf || len == 0) return -1;
 
     uint64_t last_rx_time = esp_timer_get_time() / 1000;
     size_t total = 0;
@@ -80,7 +84,7 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
 
         if ((now - last_rx_time) >= timeout_ms) {
             if (total == 0) {
-                ESP_LOGW(TAG, "Timeout for: %s", cmd);
+                ESP_LOGW(TAG, "Timeout");
                 return -1;
             }
 
@@ -95,6 +99,10 @@ int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
 
 int at_send(char* cmd, size_t len)
 {
+    if (!cmd) return -1;
+
+    ESP_LOGD(TAG, "Sent: %s", cmd);
+
     return uart_write_bytes(uart_num, cmd, len);
 }
 
