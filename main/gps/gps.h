@@ -9,12 +9,12 @@
 /* Default latitude and longitude values.
  * Here set to the coordinates of Ton Duc Thang University (TDTU), Ho Chi Minh City. 
  */
-#define     DEFAULT_LATITUDE        10.7318f 
-#define     DEFAULT_LONGITUDE       106.6981f
-#define     DEFAULT_ALTITUDE        10
+#define DEFAULT_LATITUDE        10.7318f 
+#define DEFAULT_LONGITUDE       106.6981f
+#define DEFAULT_ALTITUDE        10
 
-#define     HOVER_SPEED_THRESHOLD_CM_S      20.0
-#define     HOVER_TIME_REQUIRED_SEC         4       
+#define HOVER_SPEED_THRESHOLD_CM_S      20
+#define HOVER_TIME_REQUIRED_MS          4000       
 
 typedef struct {
     double lat;

@@ -44,27 +44,32 @@ static mavlink_status_t  mav_status;
 
 bool isDroneHovering(void)
 {
-    static uint8_t stableCounter = 0;
+    static bool isHoverTracking = false;
+    static uint64_t hover_start_ms = 0;
+    int64_t vx = (int64_t) vx_cm_s;
+    int64_t vy = (int64_t) vy_cm_s;
 
-    if (!gpsValid) {
-        stableCounter = 0;
+    int64_t speed = (vx * vx) + (vy * vy);
+    int64_t threshold = HOVER_SPEED_THRESHOLD_CM_S * HOVER_SPEED_THRESHOLD_CM_S;
+
+    uint64_t now = esp_timer_get_time() / 1000;
+
+    if (speed >= threshold) {
+        ESP_LOGI(TAG, "Drone is moving...");
+        isHoverTracking = false;
         return false;
     }
     
-    double speed_cm_s = sqrt((double)(vx_cm_s * vx_cm_s) + 
-                            (double)(vy_cm_s * vy_cm_s));
-
-    if (speed_cm_s < HOVER_SPEED_THRESHOLD_CM_S) {
-        if (stableCounter < HOVER_TIME_REQUIRED_SEC) {
-            stableCounter++;
-            ESP_LOGD(TAG, "Drone is stable for %d second...", stableCounter);
-        }
-    } else {
-        stableCounter = 0;
-        ESP_LOGI(TAG, "Drone is moving...");
+    if (!isHoverTracking) {
+        hover_start_ms = now; 
+        isHoverTracking = true;
+        return false;
     }
+    
+    if (now - hover_start_ms < HOVER_TIME_REQUIRED_MS)
+        return false;
 
-    return (stableCounter >= HOVER_TIME_REQUIRED_SEC);
+    return true;
 }
 
 static void gpsHandleMavlinkMsg(mavlink_message_t *msg)
