@@ -16,8 +16,8 @@
 #include "at.h"
 #include "fsm_manager.h"
 #include "payload.h"
-#include "mqtt_fsm.h"
 #include "transport_config.h"
+#include "mavlink_manager.h"
 
 static const char* TAG = "device_setup";
 
@@ -203,6 +203,10 @@ int deviceSetup(void)
     if (err != 0)
         ESP_LOGE(TAG, "Failed to setup gps");
 #endif 
+
+    err = setupMavlinkManager();
+    if (err != 0)
+        ESP_LOGE(TAG, "Failed to setup MAVLink manager");
 
     return err;
 }
