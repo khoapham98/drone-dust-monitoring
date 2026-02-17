@@ -150,7 +150,7 @@ static int setupDustSensor(void)
 
 static int setupGPS(void) 
 {
-    gps_uart_init();
+    gps_init();
 
     BaseType_t ret = xTaskCreate(gpsUpdateTask, "gps update task", 4096, NULL, 0, &gpsTaskHandle);	
     if (ret != pdPASS) {

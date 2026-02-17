@@ -1,6 +1,6 @@
 /**
  * @file    gps.h
- * @brief   ATGM336H driver header file
+ * @brief   GPS data consumer from Pixhawk via MAVLink
  */
 #ifndef _GPS_H_
 #define _GPS_H_
@@ -38,6 +38,6 @@ bool getGpsData(void);
  * @brief   Initialize the UART interface for GPS communication
  * @return  0 if success; -1 otherwise
  */
-int gps_uart_init(void);
+int gps_init(void);
 
 #endif
