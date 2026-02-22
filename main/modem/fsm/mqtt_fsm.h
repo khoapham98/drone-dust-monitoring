@@ -96,9 +96,9 @@ typedef struct SubscribeMessageConfig mqttSubMsg;
 #define MQTT_QOS_2    2         // Exactly once (critical commands, avoid duplicates)
 
 /**
- * @brief Handle MQTT layer FSM based on current MQTT state.
- * @param state Current MQTT state to be processed.
- * @return none.
+ * @brief   Handle MQTT layer FSM based on current MQTT state.
+ * @param   state Current MQTT state to be processed.
+ * @return  none.
  */
 void mqttFsmHandler(eMqttState state);
 

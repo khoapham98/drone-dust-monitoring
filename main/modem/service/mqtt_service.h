@@ -141,13 +141,13 @@ eModemResult mqttSetPayload(int index, char* msg, int len);
 /**
  * @brief Publish MQTT message.
  * @param index Client index.
- * @param QoS Publish QoS level.
+ * @param qos Publish QoS level.
  * @param pub_timeout Publish timeout value.
  * @return PASS if publish successful,
  *         FAIL if publish failed,
  *         WAIT if command send failed or response not ready.
  */
-eModemResult mqttPublish(int index, int QoS, int pub_timeout);
+eModemResult mqttPublish(int index, int qos, int pub_timeout);
 
 /**
  * @brief Subscribe a message to MQTT server.
@@ -160,4 +160,4 @@ eModemResult mqttPublish(int index, int QoS, int pub_timeout);
  *         WAIT if command send failed or response not ready.
  */
 eModemResult mqttSubscribeTopic(int index, char* topic, int len, int qos);
- #endif
+#endif

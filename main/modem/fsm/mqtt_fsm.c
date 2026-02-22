@@ -2,7 +2,7 @@
  * @file    mqtt_fsm.c
  * @brief   MQTT state handlers for FSM control and state transition logic
  */
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 
 #include <string.h>
 #include <stdbool.h>
@@ -71,7 +71,7 @@ static void mqttStartStatusHandler(void)
     updateMqttState(res, MQTT_STATE_RESET, MQTT_STATE_ACCQ);
 }
 
-static void mqttAccquiredStatusHandler(void)
+static void mqttAccquireStatusHandler(void)
 {
     eModemResult res = mqttAcquireClient(client.index, client.ID, server.type);
 
@@ -85,7 +85,7 @@ static void mqttAccquiredStatusHandler(void)
     updateMqttState(FAIL, MQTT_STATE_RESET, MQTT_STATE_CONNECT);
 }
 
-static void mqttConnectedStatusHandler(void)
+static void mqttConnectStatusHandler(void)
 {
     eModemResult res = mqttConnect(&client, &server);
     if (res != PASS) goto end;
@@ -206,10 +206,10 @@ void mqttFsmHandler(eMqttState state)
         mqttStartStatusHandler();
         break;
     case MQTT_STATE_ACCQ:
-        mqttAccquiredStatusHandler();
+        mqttAccquireStatusHandler();
         break;
     case MQTT_STATE_CONNECT:
-        mqttConnectedStatusHandler();
+        mqttConnectStatusHandler();
         break;
     case MQTT_STATE_READY:
         mqttReadyStatusHandler();
