@@ -8,21 +8,11 @@
 #include "modem_common.h"
 #include "sim_service.h"
 
-int simEnterCmdMode(void)
-{
-    return at_send(CMD_ENTER_CMD_MODE, strlen(CMD_ENTER_CMD_MODE));
-}
-
-int simEnterDataMode(void)
-{
-    return at_send(CMD_ENTER_DATA_MODE, strlen(CMD_ENTER_DATA_MODE));
-}
-
 eModemResult simCheckAlive(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_BASIC_CHECK, resp, sizeof(resp), 30) < 0)
+    if (at_send_wait(AT_CMD_BASIC_CHECK, resp, sizeof(resp), "OK", "ERROR", 200) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -35,7 +25,7 @@ eModemResult simEchoOn(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_ECHO_ON, resp, sizeof(resp), 20) < 0)
+    if (at_send_wait(AT_CMD_ECHO_ON, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -48,7 +38,7 @@ eModemResult simEchoOff(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_ECHO_OFF, resp, sizeof(resp), 20) < 0)
+    if (at_send_wait(AT_CMD_ECHO_OFF, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "OK"))
@@ -61,7 +51,7 @@ eModemResult simCheckReady(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_CHECK_READY, resp, sizeof(resp), 30) < 0)
+    if (at_send_wait(AT_CMD_CHECK_READY, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "CPIN: READY"))
@@ -74,7 +64,7 @@ eModemResult simCheckRegEps(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_CHECK_REG_EPS, resp, sizeof(resp), 30) < 0)
+    if (at_send_wait(AT_CMD_CHECK_REG_EPS, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "ERROR"))
@@ -111,7 +101,7 @@ eModemResult simSetPdpContext(void)
 
     snprintf(cmd, sizeof(cmd), AT_CMD_SET_PDP_CONTEXT, apn);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), 30) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "ERROR"))
@@ -119,7 +109,7 @@ eModemResult simSetPdpContext(void)
 
     memset(resp, 0, sizeof(resp));
     
-    if (at_send_wait(AT_CMD_CHECK_PDP_CONTEXT, resp, sizeof(resp), 90) < 0)
+    if (at_send_wait(AT_CMD_CHECK_PDP_CONTEXT, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, apn))
@@ -132,7 +122,7 @@ eModemResult simAttachGprs(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_ATTACH_GPRS, resp, sizeof(resp), 90) < 0)
+    if (at_send_wait(AT_CMD_ATTACH_GPRS, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "ERROR"))    
@@ -140,7 +130,7 @@ eModemResult simAttachGprs(void)
     
     memset(resp, 0, sizeof(resp));
 
-    if (at_send_wait(AT_CMD_CHECK_ATTACH_GPRS, resp, sizeof(resp), 90) < 0)
+    if (at_send_wait(AT_CMD_CHECK_ATTACH_GPRS, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "CGATT: 1"))
@@ -153,7 +143,7 @@ eModemResult simActivatePdp(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_ACTIVATE_PDP, resp, sizeof(resp), 90) < 0)
+    if (at_send_wait(AT_CMD_ACTIVATE_PDP, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     if (strstr(resp, "ERROR"))    
@@ -161,7 +151,7 @@ eModemResult simActivatePdp(void)
     
     memset(resp, 0, sizeof(resp));
 
-    if (at_send_wait(AT_CMD_CHECK_PDP_ACTIVE, resp, sizeof(resp), 90) < 0)
+    if (at_send_wait(AT_CMD_CHECK_PDP_ACTIVE, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
     char* str = strstr(resp, "CGACT");

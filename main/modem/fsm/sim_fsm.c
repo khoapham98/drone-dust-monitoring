@@ -46,7 +46,7 @@ static void simResetStatusHandler(void)
         if (simCheckAlive() == PASS)
             break;
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 
     updateSimState(PASS, SIM_STATE_AT_SYNC);
