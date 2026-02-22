@@ -270,3 +270,36 @@ eModemResult mqttPublish(int index, int QoS, int pub_timeout)
 
     return FAIL;
 }
+
+eModemResult mqttSubscribeTopic(int index, char* topic, int len, int qos)
+{
+    char resp[RESP_BUFFER_SIZE] = {0};
+    char cmd[CMD_BUFFER_SIZE] = {0};
+    snprintf(cmd, sizeof(cmd),
+            AT_CMD_MQTT_SUBSCRIBE,
+            index, len, qos);;
+
+    if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
+        return WAIT;
+
+    if (strchr(resp, '>') == NULL)
+        return FAIL;
+
+    if (at_send_wait(topic, resp, sizeof(resp), "CMQTTSUB", NULL, 500) < 0)
+        return WAIT;
+
+    int clientIndex = -1;
+    eMqttError err = -1;
+
+    char* str = strstr(resp, "CMQTTSUB");
+
+    if (str == NULL)
+        return FAIL;
+
+    sscanf(str, "CMQTTSUB: %d,%d", &clientIndex, (int*) &err);
+
+    if (err == MQTT_RES_OK)
+        return PASS;
+    
+    return FAIL;
+}

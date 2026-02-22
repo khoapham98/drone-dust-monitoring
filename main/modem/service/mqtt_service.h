@@ -58,6 +58,7 @@ typedef enum mqtt_err eMqttError;
 #define AT_CMD_MQTT_TOPIC           "AT+CMQTTTOPIC=%d,%d\r\n"
 #define AT_CMD_MQTT_PAYLOAD         "AT+CMQTTPAYLOAD=%d,%d\r\n"
 #define AT_CMD_MQTT_PUBLISH         "AT+CMQTTPUB=%d,%d,%d\r\n"
+#define AT_CMD_MQTT_SUBSCRIBE       "AT+CMQTTSUB=%d,%d,%d\r\n"
 
 /**
  * @brief Stop MQTT service.
@@ -148,4 +149,15 @@ eModemResult mqttSetPayload(int index, char* msg, int len);
  */
 eModemResult mqttPublish(int index, int QoS, int pub_timeout);
 
+/**
+ * @brief Subscribe a message to MQTT server.
+ * @param index Client index.
+ * @param topic Pointer to MQTT subscribe topic string.
+ * @param len Topic length.
+ * @param qos The public message's QoS level.
+ * @return PASS if subscribe successful,
+ *         FAIL if subscribe failed,
+ *         WAIT if command send failed or response not ready.
+ */
+eModemResult mqttSubscribeTopic(int index, char* topic, int len, int qos);
  #endif

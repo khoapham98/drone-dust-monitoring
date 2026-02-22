@@ -26,7 +26,8 @@ static const char* mqttStateStr[] = {
 
 static mqttClient client = {0};
 static mqttServer server = {0};
-static mqttPubMsg message = {0};
+static mqttPubMsg pubMsg = {0};
+static mqttSubMsg subMsg = {0};
 
 static eMqttState preState = MQTT_STATE_RESET; 
 
@@ -87,6 +88,11 @@ static void mqttAccquiredStatusHandler(void)
 static void mqttConnectedStatusHandler(void)
 {
     eModemResult res = mqttConnect(&client, &server);
+    if (res != PASS) goto end;
+
+    res = mqttSubscribeTopic(client.index, subMsg.topic, subMsg.topicLength, subMsg.qos);
+
+end:
     updateMqttState(res, MQTT_STATE_START, MQTT_STATE_READY);
 }
 
@@ -95,17 +101,14 @@ static void mqttReadyStatusHandler(void)
     char payloadBuffer[PAYLOAD_BUFFER_SIZE] = {0};
     int payloadLen = xMessageBufferReceive(msgBufHandle, payloadBuffer, sizeof(payloadBuffer), portMAX_DELAY);
 
-    eModemResult res = mqttSetPublishTopic(client.index, message.topic, message.topicLength);
-    if (res != PASS)
-        goto end;
+    eModemResult res = mqttSetPublishTopic(client.index, pubMsg.topic, pubMsg.topicLength);
+    if (res != PASS) goto end;
 
     res = mqttSetPayload(client.index, payloadBuffer, payloadLen);
-    if (res != PASS)
-        goto end;
+    if (res != PASS) goto end;
    
-    res = mqttPublish(client.index, message.qos, message.publishTimeout);
-    if (res == PASS)
-        return;
+    res = mqttPublish(client.index, pubMsg.qos, pubMsg.publishTimeout);
+    if (res == PASS) return;
 
 end:
     updateMqttState(res, MQTT_STATE_ACCQ, MQTT_STATE_READY);
@@ -158,19 +161,33 @@ static void mqttPublishMessageConfig(mqttPubMsg* msg)
         return;
     }
 
-    message.topic = msg->topic;
-    message.topicLength = msg->topicLength;
-    message.qos = msg->qos;
-    message.publishTimeout = msg->publishTimeout;
+    pubMsg.topic = msg->topic;
+    pubMsg.topicLength = msg->topicLength;
+    pubMsg.qos = msg->qos;
+    pubMsg.publishTimeout = msg->publishTimeout;
 }
 
-void mqtt_context_init(mqttClient* cli, mqttServer* ser, mqttPubMsg* pubMsg)
+static void mqttSubscribeMessageConfig(mqttSubMsg* msg)
 {
-    mqttClientInit(cli);
+    if (msg->topic == NULL) {
+        ESP_LOGE(TAG, "Topic name is missing - configure subscribe message failed");
+        return;
+    }
 
-    mqttServerInit(ser);
+    subMsg.topic = msg->topic;
+    subMsg.topicLength = msg->topicLength;
+    subMsg.qos = msg->qos;
+}
 
-    mqttPublishMessageConfig(pubMsg);
+void mqtt_context_init(mqttClient* cli, mqttServer* ser, mqttPubMsg* pubMsg, mqttSubMsg* subMsg)
+{
+    if (cli != NULL) mqttClientInit(cli);
+
+    if (ser != NULL) mqttServerInit(ser);
+
+    if (pubMsg != NULL) mqttPublishMessageConfig(pubMsg);
+
+    if (subMsg != NULL) mqttSubscribeMessageConfig(subMsg);
 
     msgBufHandle = xMessageBufferCreate(MESSAGE_BUFFER_SIZE);
     if (msgBufHandle == NULL) 

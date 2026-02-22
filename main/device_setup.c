@@ -115,14 +115,20 @@ static int setupSim(void)
         .addr = MQTT_SERVER_ADDR
     };
 
-    mqttPubMsg message = {
+    mqttPubMsg pubMsg = {
         .qos   = MQTT_QOS_1,
         .topic = MQTT_PUB_TOPIC,
-        .topicLength = strlen(message.topic),
+        .topicLength = strlen(pubMsg.topic),
         .publishTimeout = PUBLISH_TIMEOUT_30S
     };
 
-    mqtt_context_init(&client, &server, &message);
+    mqttSubMsg subMsg = {
+        .qos   = MQTT_QOS_1,
+        .topic = MQTT_SUB_TOPIC,
+        .topicLength = strlen(subMsg.topic),
+    };
+
+    mqtt_context_init(&client, &server, &pubMsg, &subMsg);
 
     BaseType_t ret = xTaskCreate(simManagerTask, "sim manager task", 4096, NULL, 0, &simTaskHandle);	
     if (ret != pdPASS) {

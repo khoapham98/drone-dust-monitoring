@@ -39,6 +39,12 @@ struct PublishMessageConfig {
     int publishTimeout;
 };
 
+struct SubscribeMessageConfig {
+    char* topic;
+    int topicLength;
+    int qos;
+};
+
 enum mqttState {
     MQTT_STATE_RESET,
     MQTT_STATE_START,
@@ -51,6 +57,7 @@ typedef enum mqttState eMqttState;
 typedef struct ClientConfig mqttClient;
 typedef struct ServerConfig mqttServer;
 typedef struct PublishMessageConfig mqttPubMsg;
+typedef struct SubscribeMessageConfig mqttSubMsg;
 
 #define PAYLOAD_BUFFER_SIZE         160
 #define MESSAGE_BUFFER_SIZE         4096
@@ -95,6 +102,14 @@ typedef struct PublishMessageConfig mqttPubMsg;
  */
 void mqttFsmHandler(eMqttState state);
 
-void mqtt_context_init(mqttClient* cli, mqttServer* ser, mqttPubMsg* pubMsg);
+/**
+ * @brief   Initialize MQTT context.
+ * @param   cli Pointer to mqttClient structure to initialize.
+ * @param   ser Pointer to mqttServer structure to initialize.
+ * @param   pubMsg Pointer to mqttPubMsg structure to initialize.
+ * @param   subMsg Pointer to mqttSubMsg structure to initialize.
+ * @return  none.
+ */
+void mqtt_context_init(mqttClient* cli, mqttServer* ser, mqttPubMsg* pubMsg, mqttSubMsg* subMsg);
 
 #endif
