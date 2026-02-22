@@ -8,14 +8,20 @@
 #include <string.h>
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include "driver/uart.h"
 #include "board.h"
 #include "at.h"
 
 static const char* TAG = "at";
+
+static at_cmd_ctx_t ctx = {0};
+
+static mqtt_parser_t mqtt_parser = {
+    .active = false,
+    .state = IDLE
+};
 
 /* uart2 */
 static const uart_port_t uart_num = UART_NUM_2;
@@ -28,107 +34,184 @@ static const uart_config_t uart_cfg = {
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
 };
 
-static bool isFinalResponse(char* recv_buf)
+int at_send_wait(char* cmd, char* recv_buf, size_t recv_buf_size, char* success_token, char* error_token, uint64_t timeout_ms)
 {
-    bool isOkDetected = (strstr(recv_buf, "\r\nOK\r\n") != NULL);
-    bool isErrorDetected = (strstr(recv_buf, "\r\nERROR\r\n") != NULL);
-    bool isPromptDetected =  (strstr(recv_buf, "\r\n> ") != NULL);
+    if (!cmd || !recv_buf || !recv_buf_size) return -1;
 
-    if (isOkDetected || isErrorDetected || isPromptDetected)
-        return true;
+    ctx.active = true;
+    ctx.error_token = error_token;
+    ctx.success_token = success_token;
+    ctx.response_length = 0;
+    memset(ctx.response_buffer, 0, sizeof(ctx.response_buffer));
+    xSemaphoreTake(ctx.done_sem, 0);
 
-    return false;
+    uart_write_bytes(uart_num, cmd, strlen(cmd));
+    ESP_LOGD(TAG, "Sent: %s", cmd);
+
+    if (xSemaphoreTake(ctx.done_sem, pdMS_TO_TICKS(timeout_ms)) == pdFALSE)
+        return -1;
+
+    if (recv_buf_size < ctx.response_length) {
+        ESP_LOGE(TAG, "Not enough space");
+        return -1;
+    }
+
+    memcpy(recv_buf, ctx.response_buffer, ctx.response_length);
+
+    if (recv_buf_size > ctx.response_length) {
+        recv_buf[ctx.response_length] = 0;
+    }
+
+    ESP_LOGD(TAG, "Response: %s", recv_buf);
+    return ctx.response_length;
 }
 
-int at_send_wait(char* cmd, char* recv_buf, size_t len, uint64_t timeout_ms)
+static void modem_cmd_resp_handle(char* buf, int resp_len)
 {
-    if (!cmd || !recv_buf || len == 0) return -1;
+    if (!ctx.active || !buf || !resp_len || mqtt_parser.active) return;
 
-    uart_flush(uart_num);
+    if (ctx.response_length + resp_len + 1 > sizeof(ctx.response_buffer)) {
+        ESP_LOGE(TAG,
+            "Resp buffer overflow: curr=%d incoming=%d max=%d",
+            ctx.response_length,
+            resp_len,
+            sizeof(ctx.response_buffer));
+        return;
+    }
 
-    at_send(cmd, strlen(cmd));
+    memcpy(ctx.response_buffer + ctx.response_length, buf, resp_len);
 
-    return at_wait(recv_buf, len, timeout_ms);
+    ctx.response_length += resp_len;
+    ctx.response_buffer[ctx.response_length] = 0;
+
+    if (ctx.error_token != NULL) {
+        if (strstr(ctx.response_buffer, ctx.error_token)) {
+            goto done;
+        }
+    } 
+    
+    if (ctx.success_token != NULL) {
+        if (strstr(ctx.response_buffer, ctx.success_token)) {
+            goto done;
+        }
+    }
+    return;
+
+done:
+    ctx.active = false;
+    xSemaphoreGive(ctx.done_sem);
+    return;
 }
 
-int at_wait(char* recv_buf, size_t len, uint64_t timeout_ms)
+static void mqtt_urc_handle(char* buf, int resp_len)
 {
-    if (!recv_buf || len == 0) return -1;
+    static char payload[256];
+    static int payload_len = 0;
+    static int sub_payload_len = 0;
 
-    uint64_t last_rx_time = esp_timer_get_time() / 1000;
-    size_t total = 0;
+    switch (mqtt_parser.state)
+    {
+    case IDLE:
+        if (strstr(buf, "CMQTTRXSTART")) {
+            payload_len = 0;
+            memset(payload, 0, sizeof(payload));
+            mqtt_parser.state = WAIT_TOPIC;
+        }
+        break;
 
-    while (1) {
-        uint8_t tmp[128];
+    case WAIT_TOPIC:
+        if (strstr(buf, "CMQTTRXTOPIC")) {
+            mqtt_parser.state = WAIT_PAYLOAD;
+        }
+        break;
 
-        int n = uart_read_bytes(uart_num, tmp, sizeof(tmp), pdMS_TO_TICKS(20));
+    case WAIT_PAYLOAD:
+        if (strstr(buf, "CMQTTRXPAYLOAD")) {
+            sscanf(buf, "+CMQTTRXPAYLOAD: %*d,%d", &sub_payload_len);
+            mqtt_parser.state = COLLECT_PAYLOAD;
+        }
+        break;
 
-        if (n > 0) {
-            size_t copy = n;
-            if (total + copy >= len)
-                copy = len - total - 1;
+    case COLLECT_PAYLOAD:
+        if (strstr(buf, "CMQTTRXEND")) {
+            payload[sub_payload_len] = 0;
+            mqtt_parser.active = false;
+            mqtt_parser.state = IDLE;
 
-            memcpy(recv_buf + total, tmp, copy);
-            total += copy;
-            recv_buf[total] = 0;
-
-            if (isFinalResponse(recv_buf)) {
-                ESP_LOGD(TAG, "Response:\n%s", recv_buf);
-                return total;
-            }
-
-            last_rx_time = esp_timer_get_time() / 1000;
+            ESP_LOGW(TAG, "Receive MQTT message:\n%s", payload);
+            break;
         }
 
-        uint64_t now = esp_timer_get_time() / 1000;
+        memcpy(payload + payload_len, buf, resp_len);
+        payload_len += resp_len;
+        break;
 
-        if ((now - last_rx_time) >= timeout_ms) {
-            if (total == 0) {
-                ESP_LOGW(TAG, "Timeout");
-                return -1;
-            }
-
-            ESP_LOGD(TAG, "Response:\n%s", recv_buf);
-
-            return total;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1));
+    default:
+        mqtt_parser.active = false;
+        mqtt_parser.state = IDLE;
+        break;
     }
 }
 
-int at_send(char* cmd, size_t len)
+static void modem_urc_handle(char* buf, int resp_len)
 {
-    if (!cmd) return -1;
+    if (!buf || resp_len <= 0) return;
 
-    ESP_LOGD(TAG, "Sent: %s", cmd);
+    if (mqtt_parser.active) {
+        mqtt_urc_handle(buf, resp_len);
+        return;
+    }
 
-    return uart_write_bytes(uart_num, cmd, len);
+    if (strstr(buf, "CMQTTRXSTART")) {
+        mqtt_parser.active = true;
+        mqtt_parser.state = IDLE;
+        mqtt_urc_handle(buf, resp_len);
+    }
+}
+
+static void modem_rx_dispatch(char* buf, int resp_len)
+{
+    if (buf == NULL || resp_len <= 0 || (resp_len == 1 && buf[0] == '\n')) return;
+
+    modem_urc_handle(buf, resp_len);
+
+    modem_cmd_resp_handle(buf, resp_len);
+}
+
+static void modem_uart_rx_task(void *pvParameters)
+{
+    char buf[256] = {0};
+    int cnt = 0;
+    char byte;
+
+    while (1) {
+        if (uart_read_bytes(uart_num, &byte, 1, pdMS_TO_TICKS(10)) <= 0)
+            continue;
+
+        buf[cnt++] = byte;
+        if (byte == '\n' || byte == '>') {
+            buf[cnt] = 0;
+            modem_rx_dispatch(buf, cnt);
+            cnt = 0;
+        }
+    }
 }
 
 int sim_uart_init(void)
 {
-    esp_err_t ret = uart_param_config(uart_num, &uart_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Set UART configuration parameters failed");
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_cfg));
+    ESP_ERROR_CHECK(uart_set_pin(uart_num, UART2_TX_PIN, UART2_RX_PIN, -1, -1));
+    ESP_ERROR_CHECK(uart_driver_install(uart_num, 2048, 0, 0, NULL, 0));
+
+    ctx.done_sem = xSemaphoreCreateBinary();
+    if (ctx.done_sem == NULL) {
+        ESP_LOGE(TAG, "Create binary semaphore failed");
         return -1;
     }
+    xSemaphoreTake(ctx.done_sem, 0);
 
-    ret = uart_set_pin(uart_num, UART2_TX_PIN, UART2_RX_PIN, -1, -1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "UART set pin failed");
-        return -1;
-    }
-
-    ret = uart_set_rx_timeout(uart_num, 101);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "UART set threshold timeout failed");
-        return -1;
-    }
-
-    ret = uart_driver_install(uart_num, 2048, 0, 0, NULL, 0);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Install UART driver failed");
+    if (xTaskCreate(modem_uart_rx_task, "modem uart rx task", 3072, NULL, 2, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Create modem uart rx task failed");
         return -1;
     }
 
