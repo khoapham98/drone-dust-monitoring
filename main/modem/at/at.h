@@ -33,7 +33,7 @@ enum mqttRxState {
 
 typedef enum prefix ePrefix;
 typedef enum mqttRxState eMqttRxState;
-typedef struct at_cmd_ctx  at_cmd_ctx_t;
+typedef struct at_cmd_ctx at_cmd_ctx_t;
 
 struct mqtt_parser {
     bool active;
@@ -42,7 +42,8 @@ struct mqtt_parser {
 
 typedef struct mqtt_parser mqtt_parser_t;
 
-#define URC_MAX     2
+#define MQTT_URC_PREFIX     "+CMQTTRX"
+#define MQTT_URC_PREFIX_LEN 8
 
 /**
  * @brief   Send an AT command and wait for the response.
