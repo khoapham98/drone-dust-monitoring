@@ -273,7 +273,7 @@ eModemResult mqttSubscribeTopic(int index, char* topic, int len, int qos)
     char cmd[CMD_BUFFER_SIZE] = {0};
     snprintf(cmd, sizeof(cmd),
             AT_CMD_MQTT_SUBSCRIBE,
-            index, len, qos);;
+            index, len, qos);
 
     if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
         return WAIT;

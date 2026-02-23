@@ -6,9 +6,9 @@
 #define _SIM_SERVICE_H_
 #include "modem_common.h"
 
-#define     VIETTEL         1
-#define     MOBIFONE        0
-#define     VINAPHONE       0
+#define VIETTEL         1
+#define MOBIFONE        0
+#define VINAPHONE       0
 
 #define CMD_ENTER_CMD_MODE          "+++\r\n"
 #define CMD_ENTER_DATA_MODE         "ATO\r\n"
@@ -28,18 +28,6 @@
 #define AT_CMD_DEACTIVATE_PDP       "AT+CGACT=0,1\r\n"
 #define AT_CMD_CHECK_PDP_ACTIVE     "AT+CGACT?\r\n"
 #define AT_CMD_GET_IP_ADDR          "AT+CGPADDR=1\r\n"
-
-/**
- * @brief Enter command mode using "+++".
- * @return 0 on success, -1 on failure.
- */
-int simEnterCmdMode(void);
-
-/**
- * @brief Enter data mode using "ATO".
- * @return 0 on success, -1 on failure.
- */
-int simEnterDataMode(void);
 
 /**
  * @brief Check if the module is alive (AT → OK).
