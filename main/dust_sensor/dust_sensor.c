@@ -1,6 +1,6 @@
 /**
  * @file    dust_sensor.c
- * @brief   PMS7003 driver source file
+ * @brief   Dust sensor module implementation
  */
 #define LOG_LOCAL_LEVEL ESP_LOG_INFO
 

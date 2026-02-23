@@ -1,9 +1,9 @@
 /**
  * @file    dust_sensor.h
- * @brief   PMS7003 driver header file
+ * @brief   Dust sensor module interface
  */
-#ifndef _PMS7003_H_
-#define _PMS7003_H_
+#ifndef _DUST_SENSOR_H_
+#define _DUST_SENSOR_H_
 #include <stdint.h>
 #include <stdbool.h>
 

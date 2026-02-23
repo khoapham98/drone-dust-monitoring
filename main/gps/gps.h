@@ -1,6 +1,6 @@
 /**
  * @file    gps.h
- * @brief   ATGM336H driver header file
+ * @brief   GPS module interface
  */
 #ifndef _GPS_H_
 #define _GPS_H_

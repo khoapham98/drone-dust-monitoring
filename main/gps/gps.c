@@ -1,6 +1,6 @@
 /**
  * @file    gps.c
- * @brief   ATGM336H driver source file
+ * @brief   GPS module implementation
  */
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
