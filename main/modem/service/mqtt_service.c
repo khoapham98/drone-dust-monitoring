@@ -2,11 +2,56 @@
  * @file    mqtt_service.c
  * @brief   Implementation of MQTT protocol operations over cellular modem
  */
+#define LOG_LOCAL_LEVEL ESP_LOG_INFO
+
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include "esp_log.h"
 #include "at.h"
 #include "modem_common.h"
 #include "mqtt_service.h"
+
+static const char* TAG = "mqtt_service";
+
+static const char* const mqtt_err_str[] = {
+    "Operation succeeded",
+    "Failed",
+    "Bad UTF-8 string",
+    "Sock connect fail",
+    "Sock create fail",
+    "Sock close fail",
+    "Message receive fail",
+    "Network open fail",
+    "Network close fail",
+    "Network not opened",
+    "Client index error",
+    "No connection",
+    "Invalid parameter",
+    "Not supported operation",
+    "Client is busy",
+    "Require connection fail",
+    "Sock sending fail",
+    "Timeout",
+    "Topic is empty",
+    "Client is used",
+    "Client not acquired",
+    "Client not released",
+    "Length out of range",
+    "Network is opened",
+    "Packet fail",
+    "DNS error",
+    "Socket is closed by server",
+    "Connection refused: unaccepted protocol version",
+    "Connection refused: identifier rejected",
+    "Connection refused: server unavailable",
+    "Connection refused: bad user name or password",
+    "Connection refused: not authorized",
+    "Handshake fail",
+    "Not set certificate",
+    "Open session failed",
+    "Disconnect from server failed"
+};
 
 eModemResult mqttStartService(void)
 {
@@ -15,18 +60,14 @@ eModemResult mqttStartService(void)
     if (at_send_wait(AT_CMD_MQTT_START, resp, sizeof(resp), "CMQTTSTART", "ERROR", 500) < 0)
         return WAIT;
 
-    if (strstr(resp, "ERROR")) {
+    if (!strncmp(resp, "ERROR", sizeof("ERROR") - 1))
         return PASS;
-    }
 
-    char* str = strstr(resp, "CMQTTSTART");
-    if (str == NULL) 
+    char* str = strstr(resp, "+CMQTTSTART");
+    if (str == NULL)
         return FAIL;
 
-    eMqttError err = -1;
-    sscanf(str, "CMQTTSTART: %d", (int*) &err);
-
-    if (err == MQTT_RES_OK) 
+    if (!strncmp(str, "+CMQTTSTART: 0", sizeof("+CMQTTSTART: 0") - 1))
         return PASS;
 
     return FAIL; 
@@ -36,17 +77,13 @@ eModemResult mqttStopService(void)
 {
     char resp[RESP_BUFFER_SIZE] = {0};
 
-    if (at_send_wait(AT_CMD_MQTT_STOP, resp, sizeof(resp), "CMQTTSTOP", "ERROR", 500) < 0)
+    if (at_send_wait(AT_CMD_MQTT_STOP, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
-    char* str = strstr(resp, "CMQTTSTOP");
-    if (str == NULL) 
-        return FAIL;
+    if (!strncmp(resp, "OK", sizeof("OK") - 1)) 
+        return PASS;
 
-    eMqttError err = -1;
-    sscanf(str, "CMQTTSTOP: %d", (int*) &err);
-
-    if (err == MQTT_RES_OK) 
+    if (!strncmp(resp, "ERROR", sizeof("ERROR") - 1))
         return PASS;
 
     return FAIL; 
@@ -63,20 +100,22 @@ eModemResult mqttReleaseClient(int index)
     if (at_send_wait(cmd, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
-    if (strstr(resp, "OK"))
+    if (!strncmp(resp, "OK", sizeof("OK") - 1)) 
         return PASS;
 
-    char* str = strstr(resp, "CMQTTREL");
+    char* str = strchr(resp, ',');
     if (str == NULL)
         return FAIL;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-    sscanf(str, "CMQTTREL: %d,%d", &clientIndex, (int*) &err);
-
-    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_NOT_ACQUIRED)
+    str += 1;
+    eMqttError err = atoi(str);
+        
+    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_NOT_ACQUIRED) {
+        ESP_LOGD(TAG, "%s", mqtt_err_str[err]);
         return PASS;
-    
+    }
+
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);   
     return FAIL;
 }
 
@@ -91,20 +130,23 @@ eModemResult mqttAcquireClient(int index, char* id, int type)
     if (at_send_wait(cmd, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
 
-    if (strstr(resp, "OK"))    
+    if (!strncmp(resp, "OK", sizeof("OK") - 1)) 
         return PASS;
-    
-    char* str = strstr(resp, "CMQTTACCQ");
-    if (str == NULL) 
+
+    char* str = strchr(resp, ',');
+    if (str == NULL)
         return FAIL;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-    sscanf(str, "CMQTTACCQ: %d,%d", &clientIndex, (int*) &err);
+    str += 1;
 
-    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED)
+    eMqttError err = atoi(str);
+  
+    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED) {
+        ESP_LOGD(TAG, "%s", mqtt_err_str[err]);
         return PASS;
+    }
 
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);   
     return FAIL;
 }
 
@@ -119,17 +161,20 @@ eModemResult mqttDisconnect(int index, int timeout)
     if (at_send_wait(cmd, resp, sizeof(resp), "CMQTTDISC", NULL, 500) < 0)
         return WAIT;
 
-    char* str = strstr(resp, "CMQTTDISC");
+    char* str = strchr(resp, ',');
     if (str == NULL)
         return FAIL;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-    sscanf(str, "CMQTTDISC: %d,%d", &clientIndex, (int*) &err);
+    str += 1;
 
-    if (err == MQTT_RES_OK || err == MQTT_RES_NO_CONNECTION)
+    eMqttError err = atoi(str);
+
+    if (err == MQTT_RES_OK || err == MQTT_RES_NO_CONNECTION) {
+        ESP_LOGD(TAG, "%s", mqtt_err_str[err]);
         return PASS;
+    }
 
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);   
     return FAIL;
 }
 
@@ -145,19 +190,23 @@ eModemResult mqttConnect(mqttClient* cli, mqttServer* ser)
     if (at_send_wait(cmd, resp, sizeof(resp), "CMQTTCONNECT", NULL, 500) < 0)
         return WAIT;
 
-    char* str = strstr(resp, "CMQTTCONNECT");
+    char* str = strchr(resp, ',');
     if (str == NULL)
         return FAIL;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-    sscanf(str, "CMQTTCONNECT: %d,%d", &clientIndex, (int*) &err);
+    str += 1;
 
-    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED)
+    eMqttError err = atoi(str);
+
+    if (err == MQTT_RES_OK || err == MQTT_RES_CLIENT_USED) {
+        ESP_LOGD(TAG, "%s", mqtt_err_str[err]);
         return PASS;
-    else if (err == MQTT_RES_REQUIRE_CONN_FAIL)
+    } else if (err == MQTT_RES_REQUIRE_CONN_FAIL) {
+        ESP_LOGW(TAG, "%s (retry)", mqtt_err_str[err]);
         return WAIT;
+    }
 
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);
     return FAIL;
 }
 
@@ -172,32 +221,24 @@ eModemResult mqttSetPublishTopic(int index, char* topic, int len)
     if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
         return WAIT;
 
-    if (strstr(resp, "ERROR")) {
-        char* str = strstr(resp, "CMQTTTOPIC");
-        if (str == NULL)
-            return FAIL;
-
-        int clientIndex = -1;
-        eMqttError err = -1;
-        sscanf(str, "CMQTTTOPIC: %d,%d", &clientIndex, (int*) &err);
-
-        if (err == MQTT_RES_OK)
-            return PASS;
-
-        return FAIL;
-    }
-
     if (strchr(resp, '>') == NULL)
         return FAIL;
-
-    memset(resp, 0, sizeof(resp));
 
     if (at_send_wait(topic, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
     
-    if (strstr(resp, "OK"))    
+    if (!strncmp(resp, "OK", sizeof("OK") - 1))    
         return PASS; 
 
+    char* str = strchr(resp, ',');
+    if (str == NULL)
+        return FAIL;
+
+    str += 1;
+
+    eMqttError err = atoi(str);
+
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);
     return FAIL;
 }
 
@@ -212,32 +253,24 @@ eModemResult mqttSetPayload(int index, char* msg, int len)
     if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
         return WAIT;
 
-    if (strstr(resp, "ERROR")) {
-        char* str = strstr(resp, "CMQTTPAYLOAD");
-        if (str == NULL)
-            return FAIL;
-
-        int clientIndex = -1;
-        eMqttError err = -1;
-        sscanf(str, "CMQTTPAYLOAD: %d,%d", &clientIndex, (int*) &err);
-
-        if (err == MQTT_RES_OK)
-            return PASS;
-
-        return FAIL;
-    }
-
     if (strchr(resp, '>') == NULL)
         return FAIL;
-
-    memset(resp, 0, sizeof(resp));
 
     if (at_send_wait(msg, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
         return WAIT;
     
-    if (strstr(resp, "OK"))    
+    if (!strncmp(resp, "OK", sizeof("OK") - 1))    
         return PASS; 
 
+    char* str = strchr(resp, ',');
+    if (str == NULL)
+        return FAIL;
+
+    str += 1;
+
+    eMqttError err = atoi(str);
+
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);
     return FAIL;
 }
 
@@ -252,18 +285,18 @@ eModemResult mqttPublish(int index, int qos, int pub_timeout)
     if (at_send_wait(cmd, resp, sizeof(resp), "CMQTTPUB", NULL, 500) < 0)
         return WAIT;
 
-    char* str = strstr(resp, "CMQTTPUB");
-
+    char* str = strchr(resp, ',');
     if (str == NULL)
         return FAIL;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-    sscanf(str, "CMQTTPUB: %d,%d", &clientIndex, (int*) &err);
+    str += 1;
+
+    eMqttError err = atoi(str);
 
     if (err == MQTT_RES_OK)
         return PASS;
 
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);
     return FAIL;
 }
 
@@ -284,18 +317,17 @@ eModemResult mqttSubscribeTopic(int index, char* topic, int len, int qos)
     if (at_send_wait(topic, resp, sizeof(resp), "CMQTTSUB", NULL, 500) < 0)
         return WAIT;
 
-    int clientIndex = -1;
-    eMqttError err = -1;
-
-    char* str = strstr(resp, "CMQTTSUB");
-
+    char* str = strchr(resp, ',');
     if (str == NULL)
         return FAIL;
 
-    sscanf(str, "CMQTTSUB: %d,%d", &clientIndex, (int*) &err);
+    str += 1;
+
+    eMqttError err = atoi(str);
 
     if (err == MQTT_RES_OK)
         return PASS;
-    
+
+    ESP_LOGE(TAG, "%s", mqtt_err_str[err]);   
     return FAIL;
 }
