@@ -187,7 +187,7 @@ eModemResult mqttConnect(mqttClient* cli, mqttServer* ser)
             cli->index, ser->addr, cli->keepAliveTime, 
             cli->cleanSession, cli->userName, cli->password);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), "CMQTTCONNECT", NULL, 500) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), "CMQTTCONNECT", NULL, 1000) < 0)
         return WAIT;
 
     char* str = strchr(resp, ',');
@@ -218,13 +218,13 @@ eModemResult mqttSetPublishTopic(int index, char* topic, int len)
             AT_CMD_MQTT_TOPIC,
             index, len);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 1000) < 0)
         return WAIT;
 
     if (strchr(resp, '>') == NULL)
         return FAIL;
 
-    if (at_send_wait(topic, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
+    if (at_send_wait(topic, resp, sizeof(resp), "OK", "ERROR", 1000) < 0)
         return WAIT;
     
     if (!strncmp(resp, "OK", sizeof("OK") - 1))    
@@ -250,13 +250,13 @@ eModemResult mqttSetPayload(int index, char* msg, int len)
             AT_CMD_MQTT_PAYLOAD,
             index, len);
 
-    if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 500) < 0)
+    if (at_send_wait(cmd, resp, sizeof(resp), ">", "ERROR", 1000) < 0)
         return WAIT;
 
     if (strchr(resp, '>') == NULL)
         return FAIL;
 
-    if (at_send_wait(msg, resp, sizeof(resp), "OK", "ERROR", 500) < 0)
+    if (at_send_wait(msg, resp, sizeof(resp), "OK", "ERROR", 1000) < 0)
         return WAIT;
     
     if (!strncmp(resp, "OK", sizeof("OK") - 1))    
