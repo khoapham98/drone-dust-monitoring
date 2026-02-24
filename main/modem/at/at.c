@@ -259,7 +259,7 @@ int sim_uart_init(void)
     }
     xSemaphoreTake(ctx.done_sem, 0);
 
-    if (xTaskCreate(modem_uart_rx_task, "modem uart rx task", 2048, NULL, 2, NULL) != pdPASS) {
+    if (xTaskCreate(modem_uart_rx_task, "modem uart rx task", 4096, NULL, 2, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Create modem uart rx task failed");
         return -1;
     }
@@ -270,7 +270,7 @@ int sim_uart_init(void)
         return -1;
     }
 
-    if (xTaskCreate(cmd_response_handler_task, "cmd response handle task", 2048, NULL, 1, NULL) != pdPASS) {
+    if (xTaskCreate(cmd_response_handler_task, "cmd response handle task", 4096, NULL, 1, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Create cmd response handle task failed");
         return -1;
     }
@@ -281,7 +281,7 @@ int sim_uart_init(void)
         return -1;
     }
 
-    if (xTaskCreate(urc_handler_task, "urc handle task", 2048, NULL, 1, NULL) != pdPASS) {
+    if (xTaskCreate(urc_handler_task, "urc handle task", 4096, NULL, 1, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Create urc handle task failed");
         return -1;
     }
