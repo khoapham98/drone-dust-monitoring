@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/message_buffer.h"
@@ -116,7 +117,7 @@ static void mqtt_urc_handle(char* buf, int resp_len)
     switch (mqtt_parser.state)
     {
     case IDLE:
-        if (strstr(buf, "CMQTTRXSTART")) {
+        if (!strncmp(buf, "+CMQTTRXSTART", sizeof("+CMQTTRXSTART") - 1)) {
             payload_len = 0;
             memset(payload, 0, sizeof(payload));
             mqtt_parser.state = WAIT_TOPIC;
@@ -125,20 +126,23 @@ static void mqtt_urc_handle(char* buf, int resp_len)
         break;
 
     case WAIT_TOPIC:
-        if (strstr(buf, "CMQTTRXTOPIC")) {
+        if (!strncmp(buf, "+CMQTTRXTOPIC", sizeof("+CMQTTRXTOPIC") - 1)) {
             mqtt_parser.state = WAIT_PAYLOAD;
         }
         break;
 
     case WAIT_PAYLOAD:
-        if (strstr(buf, "CMQTTRXPAYLOAD")) {
-            sscanf(buf, "+CMQTTRXPAYLOAD: %*d,%d", &sub_payload_len);
+        if (!strncmp(buf, "+CMQTTRXPAYLOAD", sizeof("+CMQTTRXPAYLOAD") - 1)) {
+            char* str = strchr(buf, ',');
+            if (str == NULL) break;
+            str += 1;
+            sub_payload_len = atoi(str);
             mqtt_parser.state = COLLECT_PAYLOAD;
         }
         break;
 
     case COLLECT_PAYLOAD:
-        if (strstr(buf, "CMQTTRXEND")) {
+        if (!strncmp(buf, "+CMQTTRXEND", sizeof("+CMQTTRXEND") - 1)) {
             payload[sub_payload_len] = 0;
             mqtt_parser.active = false;
             mqtt_parser.state = IDLE;
@@ -163,7 +167,7 @@ static bool is_mqtt_urc(const char* buf)
     if (mqtt_parser.active) 
         return true;
 
-    if (strncmp(buf, MQTT_URC_PREFIX, MQTT_URC_PREFIX_LEN) == 0)
+    if (!strncmp(buf, MQTT_URC_PREFIX, MQTT_URC_PREFIX_LEN))
         return true;
 
     return false;
