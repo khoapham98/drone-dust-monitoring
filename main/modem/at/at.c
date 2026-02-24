@@ -164,8 +164,12 @@ static void mqtt_urc_handle(char* buf, int resp_len)
 
 static bool is_mqtt_urc(const char* buf)
 {
-    if (mqtt_parser.active) 
+    if (mqtt_parser.active) {
+        if (!strncmp(buf, "+CMQTTRXEND", sizeof("+CMQTTRXEND") - 1))
+            mqtt_parser.active = false;
+
         return true;
+    }
 
     if (!strncmp(buf, MQTT_URC_PREFIX, MQTT_URC_PREFIX_LEN))
         return true;
@@ -234,6 +238,8 @@ static void modem_uart_rx_task(void *pvParameters)
                 cnt = 0;
                 continue;
             }
+
+            buf[cnt] = 0;
 
             if (is_urc(buf)) {
                 xMessageBufferSend(urc_handle, buf, cnt, pdMS_TO_TICKS(10));
