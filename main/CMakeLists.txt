@@ -13,7 +13,7 @@ idf_component_register(
         "modem/fsm/http_fsm.c"
         "modem/fsm/fsm_manager.c"
         "payload/payload.c"
-        "mavlink/mavlink_manager.c"
+        "mavlink_manager/mavlink_manager.c"
     INCLUDE_DIRS 
         "."
         "../boards"
@@ -24,5 +24,5 @@ idf_component_register(
         "modem/service"
         "modem/fsm"
         "payload"
-        "mavlink"
+        "mavlink_manager"
     )
