@@ -10,7 +10,6 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "common/mavlink.h"
 #include "mavlink_manager.h"
 #include "gps.h"
 

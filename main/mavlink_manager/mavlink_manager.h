@@ -4,6 +4,20 @@
  */
 #ifndef _MAVLINK_MANAGER_H_
 #define _MAVLINK_MANAGER_H_
+
+#ifndef MAVLINK_USE_CONVENIENCE_FUNCTIONS
+#define MAVLINK_USE_CONVENIENCE_FUNCTIONS
+#endif /* MAVLINK_USE_CONVENIENCE_FUNCTIONS */
+
+#include "driver/uart.h"
+
+#define MAVLINK_SEND_UART_BYTES(chan, buf, len) \
+        uart_write_bytes(UART_NUM_1, (const char*) buf, len)
+
+#include "mavlink_types.h"
+
+extern mavlink_system_t mavlink_system;
+
 #include "common/mavlink.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

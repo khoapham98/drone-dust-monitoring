@@ -10,7 +10,6 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/uart.h"
-#include "common/mavlink.h"
 #include "board.h"
 #include "mavlink_manager.h"
 
@@ -28,6 +27,11 @@ static const uart_config_t uart_cfg = {
 };
 
 /* mavlink */
+mavlink_system_t mavlink_system = {
+    .sysid = 2, 
+    .compid = MAV_COMP_ID_ONBOARD_COMPUTER
+};
+
 static mavlink_message_t mav_msg;
 static mavlink_status_t  mav_status;
 static QueueHandle_t msgQueueTable[MAVLINK_MAX_SUBSCRIBED_MSG] = {0};
