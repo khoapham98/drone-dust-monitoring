@@ -67,7 +67,7 @@ static void mavlinkManagerTask(void *pvParameters)
             }
 
             if (xQueueSend(queue, (void*) &mav_msg, 
-            pdMS_TO_TICKS(MAVLINK_QUEUE_SEND_TIMEOUT_MS) != pdTRUE)) {
+            pdMS_TO_TICKS(MAVLINK_QUEUE_SEND_TIMEOUT_MS)) != pdTRUE) {
                 ESP_LOGW(TAG, "Queue full, drop MAVLink msgid %d", (int) mav_msg.msgid);
             }
         }
