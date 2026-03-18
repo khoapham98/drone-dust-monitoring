@@ -30,7 +30,7 @@ static mqttPubMsg message = {0};
 
 static eMqttState preState = MQTT_STATE_RESET; 
 
-MessageBufferHandle_t msgBufHandle = NULL;
+extern MessageBufferHandle_t msgBufHandle;
 
 static void updateMqttState(eModemResult res, eMqttState backState, eMqttState nextState)
 {
@@ -172,9 +172,7 @@ void mqtt_context_init(mqttClient* cli, mqttServer* ser, mqttPubMsg* pubMsg)
 
     mqttPublishMessageConfig(pubMsg);
 
-    msgBufHandle = xMessageBufferCreate(MESSAGE_BUFFER_SIZE);
-    if (msgBufHandle == NULL) 
-        ESP_LOGE(TAG, "Create message buffer failed");
+    configASSERT(msgBufHandle != NULL);
 }
 
 void mqttFsmHandler(eMqttState state)

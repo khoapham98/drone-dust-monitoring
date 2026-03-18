@@ -164,6 +164,8 @@ static int setupGPS(void)
 
 static int setupSyncTask(void) 
 {
+    payload_buffer_init();
+
     eventGroupHandle = xEventGroupCreate();
     if (eventGroupHandle == NULL) {
         ESP_LOGE(TAG, "Failed to create event group");

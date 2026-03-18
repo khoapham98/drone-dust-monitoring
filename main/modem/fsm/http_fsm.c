@@ -147,9 +147,7 @@ void http_context_init(http_ctx_t* http_ctx)
 
     int cnt = 0;
 
-    msgBufHandle = xMessageBufferCreate(MESSAGE_BUFFER_SIZE);
-    if (msgBufHandle == NULL) 
-        ESP_LOGE(TAG, "Create message buffer failed");
+    configASSERT(msgBufHandle != NULL);
 
     ctx.url = http_ctx->url;
     ctx.method = http_ctx->method;
