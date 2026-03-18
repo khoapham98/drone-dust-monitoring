@@ -32,6 +32,9 @@ static mavlink_message_t mav_msg;
 static mavlink_status_t  mav_status;
 static QueueHandle_t msgQueueTable[MAVLINK_MAX_SUBSCRIBED_MSG] = {0};
 
+static bool noSubscriberLogged[MAVLINK_MAX_SUBSCRIBED_MSG] = {0};
+static bool outOfRangeLogged[MAVLINK_MAX_SUBSCRIBED_MSG] = {0};
+
 void mavlinkSubscribeMsg(QueueHandle_t queue, uint32_t msgid)
 {
     if (queue == NULL || msgid >= MAVLINK_MAX_SUBSCRIBED_MSG) {
@@ -46,6 +49,32 @@ void mavlinkSubscribeMsg(QueueHandle_t queue, uint32_t msgid)
     msgQueueTable[msgid] = queue;
 }
 
+static inline bool isMsgOutOfRange(uint32_t msgid)
+{
+    if (msgid < MAVLINK_MAX_SUBSCRIBED_MSG)
+        return false;
+    
+    if (msgid < MAVLINK_MAX_SUBSCRIBED_MSG && !outOfRangeLogged[msgid]) {
+        ESP_LOGW(TAG, "MAVLink msgid %d out of range", (int) msgid);
+        outOfRangeLogged[msgid] = true;
+    }
+
+    return true;
+}
+
+static inline bool isMsgSubscribed(uint32_t msgid)
+{
+    if (msgQueueTable[msgid] != NULL)
+        return true;
+    
+    if (!noSubscriberLogged[msgid]) {
+        ESP_LOGI(TAG, "No subscriber for MAVLink msgid %d", (int) msgid);
+        noSubscriberLogged[msgid] = true;
+    }
+
+    return false;
+}
+
 static void mavlinkManagerTask(void *pvParameters)
 {
 	while (1) {
@@ -55,16 +84,14 @@ static void mavlinkManagerTask(void *pvParameters)
             continue;
 
         if (mavlink_parse_char(MAVLINK_COMM_0, byte, &mav_msg, &mav_status)) {
-            if (mav_msg.msgid >= MAVLINK_MAX_SUBSCRIBED_MSG) {
-                ESP_LOGW(TAG, "MAVLink msgid %d out of range", (int) mav_msg.msgid);
+
+            if (isMsgOutOfRange(mav_msg.msgid))
                 continue;
-            }
+
+            if (!isMsgSubscribed(mav_msg.msgid))
+                continue;
 
             QueueHandle_t queue = msgQueueTable[mav_msg.msgid];
-            if (queue == NULL) {
-                ESP_LOGW(TAG, "No subscriber for MAVLink msgid %d", (int) mav_msg.msgid);
-                continue;
-            }
 
             if (xQueueSend(queue, (void*) &mav_msg, 
             pdMS_TO_TICKS(MAVLINK_QUEUE_SEND_TIMEOUT_MS)) != pdTRUE) {
