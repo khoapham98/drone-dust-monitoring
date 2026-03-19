@@ -62,13 +62,18 @@ bool isDroneHovering(void)
     return true;
 }
 
-static bool gpsRawIntReceive(void)
+static void receiveGpsMessages(mavlink_message_t* gpsRawInt,
+                            mavlink_message_t* globalPosInt)
 {
-    mavlink_message_t msg;
-    xQueueReceive(gpsRawIntQueue, &msg, portMAX_DELAY);
+    xQueueReceive(gpsRawIntQueue, gpsRawInt, portMAX_DELAY);
 
+    xQueueReceive(globalPosIntQueue, globalPosInt, portMAX_DELAY);
+}
+
+static inline bool isGpsRawIntValid(mavlink_message_t* msg)
+{
     mavlink_gps_raw_int_t gps_raw;
-    mavlink_msg_gps_raw_int_decode(&msg, &gps_raw);
+    mavlink_msg_gps_raw_int_decode(msg, &gps_raw);
 
     if (gps_raw.fix_type >= 2 && gps_raw.satellites_visible >= 5) {
         isGpsValid = true;
@@ -83,13 +88,10 @@ static bool gpsRawIntReceive(void)
     return isGpsValid;
 }
 
-static void globalPositionIntReceive(void) 
+static inline void updateGlobalPosition(mavlink_message_t* msg) 
 {
-    mavlink_message_t msg;
-    xQueueReceive(globalPosIntQueue, &msg, portMAX_DELAY);
-
     mavlink_global_position_int_t pos;
-    mavlink_msg_global_position_int_decode(&msg, &pos);
+    mavlink_msg_global_position_int_decode(msg, &pos);
 
     gps.lat = (double) pos.lat / 1e7;
     gps.lon = (double) pos.lon / 1e7;
@@ -100,11 +102,16 @@ static void globalPositionIntReceive(void)
 
 bool getGpsData(void)
 {
-    if (!gpsRawIntReceive()) 
+    mavlink_message_t gpsRawIntMsg;
+    mavlink_message_t globalPosIntMsg;
+
+    receiveGpsMessages(&gpsRawIntMsg, &globalPosIntMsg);
+
+    if (!isGpsRawIntValid(&gpsRawIntMsg))
         return false;
-    
-    globalPositionIntReceive();
-    
+
+    updateGlobalPosition(&globalPosIntMsg); 
+
     return true;
 }
 
