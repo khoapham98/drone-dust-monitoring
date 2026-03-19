@@ -60,7 +60,6 @@ typedef struct PublishMessageConfig mqttPubMsg;
 typedef struct SubscribeMessageConfig mqttSubMsg;
 
 #define PAYLOAD_BUFFER_SIZE         160
-#define MESSAGE_BUFFER_SIZE         4096
 
 #define CLIENT_ID_DEFAULT           "DefaultClient"
 #define SERVER_ADDR_DEFAULT         "tcp://test.mosquitto.org:1883"

@@ -10,7 +10,7 @@
 #include "esp_log.h"
 #include "payload.h"
 
-extern MessageBufferHandle_t msgBufHandle;
+MessageBufferHandle_t msgBufHandle = NULL;
 
 static const char* TAG = "payload";
 
@@ -32,4 +32,11 @@ void telemetryEnqueueJson(float lat, float lng, float alt, uint32_t pm2_5, float
 
     if (bytesSent == 0)
         ESP_LOGW(TAG, "Telemetry JSON dropped: message buffer full");
+}
+
+void payload_buffer_init(void)
+{
+    msgBufHandle = xMessageBufferCreate(MESSAGE_BUFFER_SIZE);
+
+    configASSERT(msgBufHandle != NULL);
 }

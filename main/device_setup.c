@@ -16,8 +16,8 @@
 #include "at.h"
 #include "fsm_manager.h"
 #include "payload.h"
-#include "mqtt_fsm.h"
 #include "transport_config.h"
+#include "mavlink_manager.h"
 
 static const char* TAG = "device_setup";
 
@@ -156,7 +156,7 @@ static int setupDustSensor(void)
 
 static int setupGPS(void) 
 {
-    gps_uart_init();
+    gps_init();
 
     BaseType_t ret = xTaskCreate(gpsUpdateTask, "gps update task", 4096, NULL, 0, &gpsTaskHandle);	
     if (ret != pdPASS) {
@@ -170,6 +170,8 @@ static int setupGPS(void)
 
 static int setupSyncTask(void) 
 {
+    payload_buffer_init();
+
     eventGroupHandle = xEventGroupCreate();
     if (eventGroupHandle == NULL) {
         ESP_LOGE(TAG, "Failed to create event group");
@@ -209,6 +211,10 @@ int deviceSetup(void)
     if (err != 0)
         ESP_LOGE(TAG, "Failed to setup gps");
 #endif 
+
+    err = setupMavlinkManager();
+    if (err != 0)
+        ESP_LOGE(TAG, "Failed to setup MAVLink manager");
 
     return err;
 }
