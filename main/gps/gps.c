@@ -111,17 +111,10 @@ bool getGpsData(void)
 int gps_init(void)
 {    
     gpsRawIntQueue = xQueueCreate(16, sizeof(mavlink_message_t));
-    if (gpsRawIntQueue == 0) {
-        ESP_LOGE(TAG, "Failed to create queue for MAVLINK_MSG_ID_GPS_RAW_INT");
-        return -1;
-    }
+    configASSERT(gpsRawIntQueue != 0);
 
     globalPosIntQueue = xQueueCreate(16, sizeof(mavlink_message_t));
-    if (globalPosIntQueue == 0) {
-        ESP_LOGE(TAG, "Failed to create queue for MAVLINK_MSG_ID_GLOBAL_POSITION_INT");
-        vQueueDelete(gpsRawIntQueue);
-        return -1;
-    }
+    configASSERT(globalPosIntQueue != 0);
 
     mavlinkSubscribeMsg(gpsRawIntQueue, MAVLINK_MSG_ID_GPS_RAW_INT);    
     
