@@ -8,6 +8,12 @@ The system reads data from a dust sensor, converts it to AQI, combines it with G
 ## Demo Video
 [Watch demo video on YouTube](https://youtu.be/ysVYPlQU1Qo)
 
+> **Note**  
+> An earlier prototype of this system was implemented on Raspberry Pi:  
+> https://github.com/khoapham98/drone-dust-monitoring-rpi  
+>  
+> The ESP32 version is optimized for real-time embedded deployment using FreeRTOS.
+
 ## Hardware
 - ESP32  
 - Dust sensor (PMS7003)
